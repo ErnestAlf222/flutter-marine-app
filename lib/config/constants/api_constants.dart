@@ -19,6 +19,9 @@ class ApiConstants {
   static const int defaultPerPage = 20;
   static const int maxPerPage = 100;
 
+  // Tamaño de la página de destacadas que muestra el carrusel de Inicio
+  static const int featuredPerPage = 8;
+
   // Idioma fijo de la app en la v1; los providers lo pasan como `lang`
   static const String appLang = 'es';
 
