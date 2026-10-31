@@ -9,4 +9,6 @@ class RouteConstants {
   // El slug identifica la especie en la URL y es el tag del Hero
   static const String speciesParam = 'slug';
   static const String species = '/species/:$speciesParam';
+
+  static String speciesLocation(String slug) => '/species/$slug';
 }

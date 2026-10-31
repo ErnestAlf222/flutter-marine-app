@@ -26,6 +26,15 @@ class SpeciesFilters {
 
   bool get hasQuery => query.trim().isNotEmpty;
 
+  // Solo cuenta los filtros que Explorar muestra (la zona no se ofrece: el servidor falla)
+  int get activeCount => [
+    category,
+    conservationStatus,
+    dangerLevel,
+    sizeMin,
+    depthMin,
+  ].where((f) => f != null).length;
+
   // Los campos se pasan como función para poder volver a null (quitar un filtro)
   SpeciesFilters copyWith({
     String? query,
@@ -58,6 +67,9 @@ class SpeciesFilters {
 class SpeciesFiltersNotifier extends Notifier<SpeciesFilters> {
   @override
   SpeciesFilters build() => const SpeciesFilters();
+
+  // Aplica varios filtros de una vez para no disparar una petición por cada uno
+  void apply(SpeciesFilters next) => state = next;
 
   void setQuery(String value) => state = state.copyWith(query: value);
 

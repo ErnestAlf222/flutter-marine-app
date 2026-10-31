@@ -9,7 +9,8 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ProviderScope(child: MainApp()));
-    await tester.pumpAndSettle();
+    // Sin pumpAndSettle: el esqueleto de carga repite su brillo sin parar
+    await tester.pump(const Duration(seconds: 1));
 
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.byType(NavigationDestination), findsNWidgets(4));

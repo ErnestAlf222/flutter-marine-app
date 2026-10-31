@@ -1,6 +1,8 @@
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'package:marine_app/presentation/widgets/widgets.dart';
+
 class ShellScreen extends StatelessWidget {
   // Mantiene el estado de cada pestaña al cambiar entre ellas
   final StatefulNavigationShell navigationShell;
@@ -10,7 +12,8 @@ class ShellScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: navigationShell,
+      // El degradado de profundidad vive aquí; las pestañas usan Scaffold transparente
+      body: OceanBackground(child: navigationShell),
       bottomNavigationBar: NavigationBar(
         selectedIndex: navigationShell.currentIndex,
         // Tocar la pestaña activa vuelve a su raíz

@@ -26,29 +26,57 @@ final speciesDetailProvider = FutureProvider.family<SpeciesDetail, String>((
   return detail;
 });
 
-// Hay cientos de destacadas (838 al probar): se muestra una página al azar para variar
-final featuredSpeciesProvider = FutureProvider<List<Species>>((ref) async {
-  final repository = ref.watch(speciesRepositoryProvider);
-
+// Trae una página al azar para que cada visita muestre especies distintas
+Future<List<Species>> _randomPage(
+  SpeciesRepository repository, {
+  required int perPage,
+  bool? featured,
+}) async {
   // La primera página da el total y sirve de resultado si el azar elige la 1
   final (first, error) = await repository.getSpecies(
     lang: ApiConstants.appLang,
     page: 1,
-    perPage: ApiConstants.featuredPerPage,
-    featured: true,
+    perPage: perPage,
+    featured: featured,
   );
   if (first == null) throw error;
 
-  final pages = (first.total / ApiConstants.featuredPerPage).ceil();
+  final pages = (first.total / perPage).ceil();
   final page = pages <= 1 ? 1 : Random().nextInt(pages) + 1;
   if (page == 1) return first.items;
 
   final (picked, pickedError) = await repository.getSpecies(
     lang: ApiConstants.appLang,
     page: page,
-    perPage: ApiConstants.featuredPerPage,
-    featured: true,
+    perPage: perPage,
+    featured: featured,
   );
   if (picked == null) throw pickedError;
   return picked.items;
+}
+
+// Hay cientos de destacadas (838 al probar): se muestra una página al azar para variar
+final featuredSpeciesProvider = FutureProvider<List<Species>>((ref) {
+  return _randomPage(
+    ref.watch(speciesRepositoryProvider),
+    perPage: ApiConstants.featuredPerPage,
+    featured: true,
+  );
+});
+
+// Mosaico "Descubre más": especies al azar sin repetir las del héroe, porque el
+// slug es el tag del Hero y no puede haber dos iguales en pantalla
+final discoverSpeciesProvider = FutureProvider<List<Species>>((ref) async {
+  final repository = ref.watch(speciesRepositoryProvider);
+  final featured = await ref.watch(featuredSpeciesProvider.future);
+  final shown = featured.map((s) => s.slug).toSet();
+
+  final picked = await _randomPage(
+    repository,
+    perPage: DesignConstants.discoverFetch,
+  );
+  return picked
+      .where((s) => !shown.contains(s.slug))
+      .take(DesignConstants.discoverCount)
+      .toList();
 });

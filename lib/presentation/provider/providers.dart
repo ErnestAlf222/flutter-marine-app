@@ -1,3 +1,6 @@
+// Favorites
+export 'favorites/favorites_provider.dart';
+
 // Species
 export 'species/species_filters_provider.dart';
 export 'species/species_list_provider.dart';

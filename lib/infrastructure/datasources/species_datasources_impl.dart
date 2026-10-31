@@ -127,7 +127,7 @@ class SpeciesDatasourcesImpl extends SpeciesDatasource {
           return 'Sin conexión a internet.';
         case DioExceptionType.badResponse:
           final status = error.response?.statusCode ?? 0;
-          if (status == 404) return 'No se encontró lo que buscabas.';
+          if (status == 404) return ApiConstants.notFoundMessage;
           if (status == 429) {
             return 'Demasiadas peticiones. Espera un momento e inténtalo de nuevo.';
           }

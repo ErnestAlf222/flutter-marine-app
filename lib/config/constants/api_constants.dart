@@ -22,11 +22,17 @@ class ApiConstants {
   // Tamaño de la página de destacadas que muestra el carrusel de Inicio
   static const int featuredPerPage = 8;
 
+  // El detalle lo compara para distinguir un 404 de otros errores
+  static const String notFoundMessage = 'No se encontró lo que buscabas.';
+
   // Idioma fijo de la app en la v1; los providers lo pasan como `lang`
   static const String appLang = 'es';
 
   // Si falta la traducción pedida se usa este idioma
   static const String fallbackLang = 'en';
+
+  // Pausa tras la última tecla antes de buscar: el límite es de 100 peticiones por minuto
+  static const Duration searchDebounce = Duration(milliseconds: 600);
 
   // Holgados: la API llega a tardar 5 s por petición
   static const Duration connectTimeout = Duration(seconds: 15);
