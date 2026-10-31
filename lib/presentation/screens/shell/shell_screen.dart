@@ -38,9 +38,9 @@ class ShellScreen extends StatelessWidget {
             label: 'Favoritos',
           ),
           NavigationDestination(
-            icon: Icon(Icons.info_outline),
-            selectedIcon: Icon(Icons.info),
-            label: 'Acerca de',
+            icon: Icon(Icons.public_outlined),
+            selectedIcon: Icon(Icons.public),
+            label: 'Mapa',
           ),
         ],
       ),

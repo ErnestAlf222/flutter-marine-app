@@ -27,6 +27,43 @@ class DesignConstants {
   static const double detailHeaderFraction = 0.62;
   static const double detailScrimSolid = 0.3;
 
+  // Burbuja de filtros: círculo de 56 dp que se pega a un borde y, sin uso, se
+  // minimiza a una pestaña de 24 dp de ancho
+  static const double bubbleSize = 56;
+  static const double bubbleMargin = 12;
+  static const double bubbleTabWidth = 24;
+  // Altura inicial como fracción del recorrido (0 arriba, 1 abajo)
+  static const double bubbleStartY = 0.78;
+
+  // Pez cargador: alto por defecto y cuánto más ancho es su recorrido
+  static const double fishSize = 40;
+  static const double fishTrackFactor = 3;
+  // Más pequeño sobre las fotos que cargan
+  static const double fishPhotoSize = 22;
+
+  // Detalle: la foto se recorta (cover) salvo que el recorte sea extremo, es decir,
+  // que se pierda más de esta fracción (0.45 = 45 %) del ancho o del alto de la foto.
+  // Solo entonces se muestra entera sobre un fondo borroso.
+  static const double maxCropLoss = 0.45;
+
+  // Visor de foto a pantalla completa: se decodifica más grande para poder acercar
+  static const int viewerCacheWidth = 2000;
+  static const double viewerMaxScale = 5;
+
+  // Corazón de favorito (círculo e icono): 48/30 dp en las tarjetas y 56/34 dp en el
+  // héroe de Inicio y el Detalle. Ninguno baja del mínimo táctil de 48 dp
+  // Escala de conservación: nivel normal y nivel activo (más alto)
+  static const double scaleHeight = 34;
+  static const double scaleActiveHeight = 46;
+
+  static const double favoriteTileSize = 48;
+  static const double favoriteTileIcon = 30;
+  static const double favoriteLargeSize = 56;
+  static const double favoriteLargeIcon = 34;
+
+  // Botón del crédito: más pequeño que el resto de botones de vidrio
+  static const double creditButtonSize = 40;
+
   // Fondo borroso del héroe
   static const double backdropBlur = 28;
   static const double backdropDim = 0.55;
@@ -35,6 +72,21 @@ class DesignConstants {
   static const double glassBlur = 14;
   static const double glassAlpha = 0.32;
   static const double glassSize = 48;
+  // Borde fino y luz suave del cristal
+  static const double glassBorderAlpha = 0.18;
+  static const double glassBorderWidth = 1;
+  static const double glassLightAlpha = 0.14;
+  // Hojas y chips grandes llevan más tinte para que el texto siga legible
+  static const double glassSheetAlpha = 0.55;
+
+  // Cabecera de Inicio sobre el héroe: nombre (~28) + espacio + buscador (56) + márgenes
+  static const double homeHeaderHeight = 132;
+
+  // Hoja de filtros de Explorar: fracción del alto de pantalla que ocupa
+  static const double filterSheetHeightFraction = 0.85;
+
+  // Espacio al final de las listas para que el botón flotante no tape la última fila
+  static const double fabClearance = 96;
 
   // Héroe de destacadas
   static const double heroHeightFraction = 0.6;
@@ -49,6 +101,16 @@ class DesignConstants {
 
   // Scroll infinito: se pide la página siguiente a esta distancia del final (px)
   static const double loadMoreExtent = 600;
+
+  // Tarjetas de especies destacadas en la hoja de una zona
+  static const double zoneTileWidth = 160;
+  static const double zoneTileHeight = 210;
+
+  // Colecciones de Inicio
+  static const double collectionCardHeight = 104;
+
+  // Parallax de la foto dentro de las tarjetas: cuántos px se desplaza hacia cada lado
+  static const double parallaxTravel = 18;
 
   // Fichas de grupo
   static const double categoryTileHeight = 92;

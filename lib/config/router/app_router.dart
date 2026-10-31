@@ -5,6 +5,7 @@ import 'package:marine_app/config/constants/motion_constants.dart';
 import 'package:marine_app/config/constants/route_constants.dart';
 import 'package:marine_app/domain/domain.dart';
 import 'package:marine_app/presentation/screens/screens.dart';
+import 'package:marine_app/presentation/widgets/widgets.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: RouteConstants.home,
@@ -39,9 +40,16 @@ final GoRouter appRouter = GoRouter(
         },
       ),
     ),
-    StatefulShellRoute.indexedStack(
+    StatefulShellRoute(
       builder: (context, state, navigationShell) =>
           ShellScreen(navigationShell: navigationShell),
+      // Igual que indexedStack (las pestañas conservan su estado), pero el cambio
+      // entre ellas es un fundido con un leve desplazamiento vertical
+      navigatorContainerBuilder: (context, navigationShell, children) =>
+          BranchSwitcher(
+            currentIndex: navigationShell.currentIndex,
+            children: children,
+          ),
       branches: [
         StatefulShellBranch(
           routes: [
@@ -70,8 +78,8 @@ final GoRouter appRouter = GoRouter(
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: RouteConstants.about,
-              builder: (context, state) => const AboutScreen(),
+              path: RouteConstants.map,
+              builder: (context, state) => const MapScreen(),
             ),
           ],
         ),

@@ -75,6 +75,8 @@ flutter:
   # flutter_dotenv empaqueta el .env como asset; por eso solo debe llevar valores públicos
   assets:
     - .env
+    # Natural Earth 110m, dominio público: tierra firme del mapa de zonas
+    - assets/geo/ne_110m_land.geojson
 
   # To add assets to your application, add an assets section, like this:
   # assets:

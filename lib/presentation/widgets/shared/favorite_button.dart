@@ -6,14 +6,22 @@ import 'package:material_ui/material_ui.dart';
 import 'package:marine_app/config/config.dart';
 import 'package:marine_app/domain/domain.dart';
 import 'package:marine_app/presentation/provider/providers.dart';
+import 'package:marine_app/presentation/widgets/shared/favorite_bubbles.dart';
 
 // Corazón de favorito sobre vidrio: coral solo cuando está marcado, con rebote al marcar
 class FavoriteButton extends ConsumerStatefulWidget {
   final Species species;
   // Permite animar la salida antes de quitar (Favoritos); por defecto quita al instante
   final Future<void> Function()? onRemove;
+  // Versión grande para el héroe de Inicio y el Detalle (56 dp, icono de 34)
+  final bool large;
 
-  const FavoriteButton({super.key, required this.species, this.onRemove});
+  const FavoriteButton({
+    super.key,
+    required this.species,
+    this.onRemove,
+    this.large = false,
+  });
 
   @override
   ConsumerState<FavoriteButton> createState() => _FavoriteButtonState();
@@ -55,11 +63,25 @@ class _FavoriteButtonState extends ConsumerState<FavoriteButton>
     final palette = OceanPalette.of(context);
     final slug = widget.species.slug;
     final isFavorite = ref.watch(isFavoriteProvider(slug));
+    final size = widget.large
+        ? DesignConstants.favoriteLargeSize
+        : DesignConstants.favoriteTileSize;
+    final iconSize = widget.large
+        ? DesignConstants.favoriteLargeIcon
+        : DesignConstants.favoriteTileIcon;
 
-    // Rebota solo al marcar, no al pintar una tarjeta que ya era favorita
-    ref.listen(isFavoriteProvider(slug), (previous, next) {
-      if (previous == false && next && !MediaQuery.disableAnimationsOf(context)) {
+    // Rebota solo al marcar, no al pintar una tarjeta que ya era favorita. Se compara entre
+    // dos listas ya cargadas: mientras la base local no ha respondido, isFavorite vale false
+    // y, al llegar la lista, una especie ya guardada parecería recién marcada.
+    ref.listen(favoritesProvider, (previous, next) {
+      final before = previous?.asData?.value;
+      final after = next.asData?.value;
+      if (before == null || after == null) return;
+      final added = !before.any((s) => s.slug == slug) && after.any((s) => s.slug == slug);
+      if (added && !MediaQuery.disableAnimationsOf(context)) {
         _bounce.forward(from: 0);
+        // Además del rebote, unas burbujas suben desde el corazón
+        FavoriteBubbles.show(context, color: palette.coral);
       }
     });
 
@@ -76,9 +98,12 @@ class _FavoriteButtonState extends ConsumerState<FavoriteButton>
           child: ColoredBox(
             color: palette.ink.withValues(alpha: DesignConstants.glassAlpha),
             child: SizedBox.square(
-              dimension: DesignConstants.glassSize,
+              dimension: size,
               child: IconButton(
                 isSelected: isFavorite,
+                iconSize: iconSize,
+                padding: EdgeInsets.zero,
+                constraints: BoxConstraints.tightFor(width: size, height: size),
                 tooltip: isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos',
                 icon: Icon(Icons.favorite_border, color: palette.paper),
                 selectedIcon: Icon(Icons.favorite, color: palette.coral),

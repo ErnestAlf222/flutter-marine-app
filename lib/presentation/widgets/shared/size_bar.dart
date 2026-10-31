@@ -52,7 +52,7 @@ class SizeBar extends StatelessWidget {
     final animate = !MediaQuery.disableAnimationsOf(context);
 
     return Semantics(
-      label: 'Tamaño: $rangeText',
+      label: 'Tamaño, entre qué tamaños se le encuentra: $rangeText',
       child: ExcludeSemantics(
         child: DecoratedBox(
           decoration: BoxDecoration(
@@ -66,6 +66,11 @@ class SizeBar extends StatelessWidget {
               children: [
                 Text('TAMAÑO', style: textTheme.overline.copyWith(color: accent)),
                 const SizedBox(height: 6),
+                Text(
+                  MeasureConstants.sizeQuestion,
+                  style: textTheme.bodyMedium?.copyWith(color: palette.paper),
+                ),
+                const SizedBox(height: 8),
                 Text(
                   rangeText,
                   style: textTheme.headlineSmall?.copyWith(color: palette.paper),
@@ -120,6 +125,29 @@ class SizeBar extends StatelessWidget {
                       );
                     },
                   ),
+                ),
+                const SizedBox(height: 8),
+                // El eje crece hacia la derecha: de lo más pequeño a lo más grande
+                Row(
+                  children: [
+                    Text(
+                      MeasureConstants.smallLabel,
+                      style: textTheme.labelSmall?.copyWith(color: palette.paper),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Icon(
+                        Icons.arrow_right_alt,
+                        size: 24,
+                        color: accent,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      MeasureConstants.largeLabel,
+                      style: textTheme.labelSmall?.copyWith(color: palette.paper),
+                    ),
+                  ],
                 ),
               ],
             ),

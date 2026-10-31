@@ -30,4 +30,10 @@ abstract class SpeciesRepository {
   });
 
   Future<(List<OceanZone>?, String)> getZones({required String lang});
+
+  Future<(List<Species>?, String)> getZoneTopSpecies({
+    required String zone,
+    required String lang,
+    required int limit,
+  });
 }

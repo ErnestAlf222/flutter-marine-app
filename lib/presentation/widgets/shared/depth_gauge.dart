@@ -19,6 +19,20 @@ class DepthGauge extends StatelessWidget {
   static double _scaleMax(double deepest) => MeasureConstants.depthScaleSteps
       .firstWhere((s) => s >= deepest, orElse: () => deepest);
 
+  // Nombre del extremo y su medida debajo
+  static Widget _end(TextTheme textTheme, OceanPalette palette, String name, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(name, style: textTheme.labelMedium?.copyWith(color: palette.paper)),
+        Text(
+          value,
+          style: textTheme.labelSmall?.copyWith(color: palette.paper.withValues(alpha: 0.75)),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (minM == null && maxM == null) return const SizedBox.shrink();
@@ -38,7 +52,7 @@ class DepthGauge extends StatelessWidget {
     final animate = !MediaQuery.disableAnimationsOf(context);
 
     return Semantics(
-      label: 'Profundidad: $rangeText. Escala hasta ${_fmt(scaleMax)} metros',
+      label: 'Profundidad, entre qué profundidades se le encuentra: $rangeText. De la superficie al fondo, escala hasta ${_fmt(scaleMax)} metros',
       child: ExcludeSemantics(
         child: DecoratedBox(
           decoration: BoxDecoration(
@@ -92,25 +106,30 @@ class DepthGauge extends StatelessWidget {
                               ),
                             ),
                           ),
-                          Positioned(
-                            left: _trackWidth + 12,
-                            top: 0,
-                            child: Text('0 m', style: textTheme.labelSmall?.copyWith(color: palette.paper)),
-                          ),
-                          Positioned(
-                            left: _trackWidth + 12,
-                            bottom: 0,
-                            child: Text(
-                              '${_fmt(scaleMax)} m',
-                              style: textTheme.labelSmall?.copyWith(color: palette.paper),
-                            ),
-                          ),
                         ],
                       );
                     },
                   ),
                 ),
-                const SizedBox(width: 8),
+                // Extremos de la pista: arriba la superficie y abajo el fondo, con una flecha
+                SizedBox(
+                  height: height,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _end(textTheme, palette, MeasureConstants.surfaceLabel, '0 m'),
+                      Icon(Icons.arrow_downward, size: 20, color: accent),
+                      _end(
+                        textTheme,
+                        palette,
+                        MeasureConstants.bottomLabel,
+                        '${_fmt(scaleMax)} m',
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -120,6 +139,11 @@ class DepthGauge extends StatelessWidget {
                         style: textTheme.overline.copyWith(color: accent),
                       ),
                       const SizedBox(height: 6),
+                      Text(
+                        MeasureConstants.depthQuestion,
+                        style: textTheme.bodyMedium?.copyWith(color: palette.paper),
+                      ),
+                      const SizedBox(height: 8),
                       Text(
                         rangeText,
                         style: textTheme.headlineSmall?.copyWith(color: palette.paper),

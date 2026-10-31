@@ -5,11 +5,16 @@ class OceanZone {
   // Nombre y descripción ya vienen en el idioma pedido
   final String name;
   final String description;
+  // Centro de la zona en el mapa (grados)
+  final double lat;
+  final double lon;
 
   const OceanZone({
     required this.id,
     required this.speciesCount,
     required this.name,
     required this.description,
+    required this.lat,
+    required this.lon,
   });
 }

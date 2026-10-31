@@ -90,12 +90,40 @@ class SpeciesMapper {
             .firstOrNull ??
         translations.firstOrNull;
 
+    final center = boundsCenter(r.bounds);
+
     return OceanZone(
       id: r.id,
       speciesCount: r.speciesCount,
       name: t?.name ?? r.id,
       description: t?.description ?? '',
+      lat: center.lat,
+      lon: center.lon,
     );
+  }
+
+  /// Centro de una zona: el que trae la API o, si solo hay límites, el punto medio
+  /// de la caja. Sin datos queda en (0, 0) para que la zona siga siendo visible.
+  static ({double lat, double lon}) boundsCenter(ZoneBoundsResponse? b) {
+    if (b == null) return (lat: 0, lon: 0);
+
+    final cLat = b.centerLat;
+    final cLon = b.centerLon;
+    if (cLat != null && cLon != null) return (lat: cLat, lon: cLon);
+
+    final latMin = b.latMin;
+    final latMax = b.latMax;
+    final lonMin = b.lonMin;
+    final lonMax = b.lonMax;
+    if (latMin == null || latMax == null || lonMin == null || lonMax == null) {
+      return (lat: 0, lon: 0);
+    }
+
+    // Una caja que cruza el antimeridiano (lon_min > lon_max) se mide por el lado corto
+    final east = lonMax < lonMin ? lonMax + 360 : lonMax;
+    var lon = (lonMin + east) / 2;
+    if (lon > 180) lon -= 360;
+    return (lat: (latMin + latMax) / 2, lon: lon);
   }
 
   // Idioma pedido, luego el de respaldo, luego cualquiera

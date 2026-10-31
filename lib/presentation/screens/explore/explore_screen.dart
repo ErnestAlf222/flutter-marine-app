@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
-import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:marine_app/config/config.dart';
@@ -17,7 +16,61 @@ class ExploreScreen extends StatelessWidget {
     // Transparente para ver el degradado de profundidad del shell
     return const Scaffold(
       backgroundColor: Colors.transparent,
-      body: SafeArea(bottom: false, child: ExploreView()),
+      body: Stack(
+        children: [
+          SafeArea(bottom: false, child: ExploreView()),
+          // La burbuja vive en el cuerpo de esta pantalla, que termina donde empieza la
+          // barra de navegación del shell: nunca queda debajo de ella
+          Positioned.fill(child: _FiltersBubble()),
+        ],
+      ),
+    );
+  }
+}
+
+// Hoja de cristal: el contenido se pinta sobre una superficie translúcida con desenfoque
+Future<void> _openFilters(BuildContext context) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => const _FiltersSheet(),
+  );
+}
+
+// Burbuja de filtros: se arrastra, se pega al borde y se minimiza sola
+class _FiltersBubble extends ConsumerStatefulWidget {
+  const _FiltersBubble();
+
+  @override
+  ConsumerState<_FiltersBubble> createState() => _FiltersBubbleState();
+}
+
+class _FiltersBubbleState extends ConsumerState<_FiltersBubble> {
+  bool _sheetOpen = false;
+
+  Future<void> _open() async {
+    setState(() => _sheetOpen = true);
+    await _openFilters(context);
+    if (mounted) setState(() => _sheetOpen = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final placement = ref.watch(filterBubbleProvider);
+    final count = ref.watch(
+      speciesFiltersProvider.select((f) => f.activeCount),
+    );
+
+    return EdgeBubble(
+      placement: placement,
+      onPlacementChanged: ref.read(filterBubbleProvider.notifier).update,
+      icon: Icons.tune,
+      badge: count,
+      label: count > 0 ? 'Filtros, $count aplicados' : 'Filtros',
+      pauseIdle: _sheetOpen,
+      onTap: _open,
     );
   }
 }
@@ -31,6 +84,7 @@ class ExploreView extends ConsumerStatefulWidget {
 
 class _ExploreViewState extends ConsumerState<ExploreView> {
   late final TextEditingController _controller;
+  final _focusNode = FocusNode();
   Timer? _debounce;
   // Último texto enviado a los filtros; distingue lo escrito aquí de lo que deja Inicio
   late String _sentQuery;
@@ -40,13 +94,41 @@ class _ExploreViewState extends ConsumerState<ExploreView> {
     super.initState();
     _sentQuery = ref.read(speciesFiltersProvider).query;
     _controller = TextEditingController(text: _sentQuery);
+    // Si Inicio pidió el foco antes de que esta pestaña existiera
+    if (ref.read(searchFocusRequestProvider)) _focusSearch();
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
     _controller.dispose();
+    _focusNode.dispose();
     super.dispose();
+  }
+
+  bool _focusPending = false;
+
+  // Al salir de esta pestaña el buscador suelta el foco: un campo enfocado en una pestaña
+  // oculta recuperaba el teclado al volver desde el Detalle (restauración de foco al hacer pop)
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!TickerMode.valuesOf(context).enabled) _focusNode.unfocus();
+  }
+
+  // Espera a que termine el cambio de pestaña: antes, el campo aún no puede recibir el
+  // foco y el teclado no llega a abrirse
+  void _focusSearch() {
+    if (_focusPending) return;
+    _focusPending = true;
+
+    Future<void>.delayed(MotionConstants.medium, () {
+      _focusPending = false;
+      if (!mounted) return;
+
+      ref.read(searchFocusRequestProvider.notifier).consume();
+      if (TickerMode.valuesOf(context).enabled) _focusNode.requestFocus();
+    });
   }
 
   void _onChanged(String text) {
@@ -68,21 +150,12 @@ class _ExploreViewState extends ConsumerState<ExploreView> {
     _commit('');
   }
 
-  Future<void> _openFilters() {
-    return showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      showDragHandle: true,
-      backgroundColor: OceanPalette.of(context).abyss,
-      builder: (_) => const _FiltersSheet(),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final palette = OceanPalette.of(context);
-    final filters = ref.watch(speciesFiltersProvider);
+    // Inicio pide el foco cuando esta pestaña ya existe
+    ref.listen(searchFocusRequestProvider, (_, requested) {
+      if (requested) _focusSearch();
+    });
 
     // Inicio deja categoría, texto o profundidad antes de abrir esta pestaña, que ya existe
     ref.listen(speciesFiltersProvider, (_, next) {
@@ -102,50 +175,12 @@ class _ExploreViewState extends ConsumerState<ExploreView> {
             DesignConstants.pagePadding,
             0,
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: ListenableBuilder(
-                  listenable: _controller,
-                  builder: (context, _) => SearchBar(
-                    controller: _controller,
-                    hintText: 'Buscar especies',
-                    elevation: const WidgetStatePropertyAll(0),
-                    backgroundColor: WidgetStatePropertyAll(palette.deep),
-                    textStyle: WidgetStatePropertyAll(
-                      TextStyle(color: palette.paper),
-                    ),
-                    hintStyle: WidgetStatePropertyAll(
-                      TextStyle(color: palette.paper.withValues(alpha: 0.6)),
-                    ),
-                    leading: Icon(Icons.search, color: palette.paper),
-                    trailing: [
-                      if (_controller.text.isNotEmpty)
-                        IconButton(
-                          icon: Icon(Icons.close, color: palette.paper),
-                          tooltip: 'Borrar búsqueda',
-                          onPressed: _clearQuery,
-                        ),
-                    ],
-                    onChanged: _onChanged,
-                    onSubmitted: _commit,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Badge(
-                isLabelVisible: filters.activeCount > 0 && !filters.hasQuery,
-                label: Text('${filters.activeCount}'),
-                child: IconButton.filledTonal(
-                  icon: const Icon(Icons.tune),
-                  tooltip: filters.hasQuery
-                      ? 'Los filtros se desactivan mientras buscas por texto'
-                      : 'Filtros',
-                  // Con texto se usa /search, que no admite filtros
-                  onPressed: filters.hasQuery ? null : _openFilters,
-                ),
-              ),
-            ],
+          child: SpeciesSearchField(
+            controller: _controller,
+            focusNode: _focusNode,
+            onChanged: _onChanged,
+            onSubmitted: _commit,
+            onClear: _clearQuery,
           ),
         ),
         _ActiveFilters(onClearQuery: _clearQuery),
@@ -168,8 +203,6 @@ class _ActiveFilters extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final filters = ref.watch(speciesFiltersProvider);
     final notifier = ref.read(speciesFiltersProvider.notifier);
-    final textTheme = Theme.of(context).textTheme;
-    final palette = OceanPalette.of(context);
 
     final chips = <Widget>[
       if (filters.category != null)
@@ -203,64 +236,87 @@ class _ActiveFilters extends ConsumerWidget {
 
     return Padding(
       padding: const EdgeInsets.only(top: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            height: 40,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(
-                horizontal: DesignConstants.pagePadding,
-              ),
-              children: [
-                if (filters.hasQuery)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: InputChip(
-                      label: Text('«${filters.query.trim()}»'),
-                      onDeleted: onClearQuery,
-                    ),
-                  ),
-                // Con texto los filtros no se aplican: se ven apagados y sin respuesta
-                for (final chip in chips)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: filters.hasQuery
-                        ? IgnorePointer(child: Opacity(opacity: 0.4, child: chip))
-                        : chip,
-                  ),
-                if (chips.length > 1 && !filters.hasQuery)
-                  ActionChip(
-                    label: const Text('Quitar todos'),
-                    onPressed: () =>
-                        notifier.apply(SpeciesFilters(query: filters.query)),
-                  ),
-              ],
-            ),
+      child: SizedBox(
+        height: 44,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(
+            horizontal: DesignConstants.pagePadding,
           ),
-          if (filters.hasQuery && chips.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                DesignConstants.pagePadding,
-                6,
-                DesignConstants.pagePadding,
-                0,
+          children: [
+            // Con texto, los filtros se aplican sobre los resultados de la búsqueda
+            if (filters.hasQuery)
+              _chip('«${filters.query.trim()}»', onClearQuery),
+            ...chips,
+            if (chips.length > 1)
+              _GlassChip(
+                label: 'Quitar todos',
+                onTap: () => notifier.apply(SpeciesFilters(query: filters.query)),
               ),
-              child: Text(
-                'Los filtros no se aplican mientras buscas por texto.',
-                style: textTheme.bodySmall?.copyWith(
-                  color: palette.paper.withValues(alpha: 0.7),
-                ),
-              ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
+  Widget _chip(String label, VoidCallback onRemove) =>
+      _GlassChip(label: label, onRemove: onRemove);
+
   Widget _removable(String label, VoidCallback onRemove) =>
-      InputChip(label: Text(label), onDeleted: onRemove);
+      _chip(label, onRemove);
+}
+
+// Chip de cristal: translúcido con desenfoque, borde fino y, si se puede quitar, una X
+class _GlassChip extends StatelessWidget {
+  final String label;
+  final VoidCallback? onRemove;
+  final VoidCallback? onTap;
+
+  const _GlassChip({required this.label, this.onRemove, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = OceanPalette.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: GlassSurface(
+        borderRadius: BorderRadius.circular(999),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: onRemove ?? onTap,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 14, right: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: palette.paper,
+                    ),
+                  ),
+                  if (onRemove != null)
+                    Padding(
+                      padding: const EdgeInsets.all(6),
+                      child: Icon(
+                        Icons.close,
+                        size: 18,
+                        semanticLabel: 'Quitar $label',
+                        color: palette.paper,
+                      ),
+                    )
+                  else
+                    const SizedBox(width: 6),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // Sin decimales cuando el valor es entero
@@ -366,13 +422,11 @@ class _ResultsGridState extends ConsumerState<_ResultsGrid> {
                 // Las páginas siguientes también entran en cascada, no todas con el mismo retraso
                 index: index % ApiConstants.defaultPerPage % 6,
                 child: SpeciesTile(
+                  parallax: true,
                   species: species,
                   aspectRatio: DesignConstants
                       .mosaicAspects[index % DesignConstants.mosaicAspects.length],
-                  onTap: () => context.push(
-                    RouteConstants.speciesLocation(species.slug),
-                    extra: species,
-                  ),
+                  onTap: () => openSpecies(context, species),
                 ),
               );
             },
@@ -380,9 +434,12 @@ class _ResultsGridState extends ConsumerState<_ResultsGrid> {
         ),
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: DesignConstants.pagePadding,
-              vertical: DesignConstants.sectionGap,
+            // El margen inferior deja espacio a la burbuja de filtros, que puede quedar al final
+            padding: const EdgeInsets.fromLTRB(
+              DesignConstants.pagePadding,
+              DesignConstants.sectionGap,
+              DesignConstants.pagePadding,
+              DesignConstants.sectionGap + DesignConstants.fabClearance,
             ),
             child: _footer(context, state, palette),
           ),
@@ -392,10 +449,9 @@ class _ResultsGridState extends ConsumerState<_ResultsGrid> {
   }
 
   Widget _footer(BuildContext context, SpeciesListState state, OceanPalette palette) {
-    final radius = BorderRadius.circular(DesignConstants.tileRadius);
-
+    // Cargar más resultados: un pez nada mientras llega la siguiente página
     if (state.isLoadingMore) {
-      return SizedBox(height: 72, child: SkeletonBox(borderRadius: radius));
+      return const Center(child: FishLoader());
     }
 
     // Lo ya cargado se queda; solo el pie muestra el fallo y permite reintentar
@@ -419,7 +475,10 @@ class _ResultsGridState extends ConsumerState<_ResultsGrid> {
 
     if (!state.hasNextPage) {
       return Text(
-        'Llegaste al final',
+        // La búsqueda por texto no pasa de 50 resultados: se avisa que puede haber más
+        state.searchCapped
+            ? 'La búsqueda muestra hasta ${ApiConstants.searchResultCap} resultados y los filtros se aplican sobre ellos. Escribe algo más específico para afinarla.'
+            : 'Llegaste al final',
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
           color: palette.paper.withValues(alpha: 0.6),
@@ -511,6 +570,9 @@ class _ResultsMessage extends StatelessWidget {
 // Panel de filtros
 // ---------------------------------------------------------------------------
 
+// Cada fila del acordeón; solo una está abierta a la vez
+enum _Section { group, status, danger, depth, size }
+
 class _FiltersSheet extends ConsumerStatefulWidget {
   const _FiltersSheet();
 
@@ -519,12 +581,13 @@ class _FiltersSheet extends ConsumerStatefulWidget {
 }
 
 class _FiltersSheetState extends ConsumerState<_FiltersSheet> {
-  // Borrador: nada se pide al servidor hasta pulsar "Aplicar"
+  // Borrador: nada se pide al servidor hasta pulsar "Aplicar"; cerrar lo descarta
   late String? _category;
   late String? _status;
   late String? _danger;
   late double? _depthMin;
   late double? _sizeMin;
+  _Section? _open;
 
   @override
   void initState() {
@@ -536,6 +599,16 @@ class _FiltersSheetState extends ConsumerState<_FiltersSheet> {
     _depthMin = f.depthMin;
     _sizeMin = f.sizeMin;
   }
+
+  bool get _hasDraft =>
+      _category != null ||
+      _status != null ||
+      _danger != null ||
+      _depthMin != null ||
+      _sizeMin != null;
+
+  void _toggle(_Section section) =>
+      setState(() => _open = _open == section ? null : section);
 
   void _clear() => setState(() {
     _category = null;
@@ -564,122 +637,359 @@ class _FiltersSheetState extends ConsumerState<_FiltersSheet> {
   @override
   Widget build(BuildContext context) {
     final palette = OceanPalette.of(context);
+    final divider = Divider(
+      height: 1,
+      color: palette.paper.withValues(alpha: 0.08),
+    );
+
+    return SizedBox(
+      height:
+          MediaQuery.sizeOf(context).height *
+          DesignConstants.filterSheetHeightFraction,
+      // Hoja de cristal: translúcida, con desenfoque, borde fino y luz suave
+      child: GlassSurface(
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(DesignConstants.cardRadius),
+        ),
+        tintAlpha: DesignConstants.glassSheetAlpha,
+        child: Column(
+        children: [
+          // Asa para arrastrar, dibujada aquí porque la hoja no lleva la de Material
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: palette.paper.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: const SizedBox(width: 36, height: 4),
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(
+                horizontal: DesignConstants.pagePadding,
+              ),
+              children: [
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: palette.paper.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(
+                      DesignConstants.tileRadius,
+                    ),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(
+                      DesignConstants.tileRadius,
+                    ),
+                    child: Column(
+                      children: [
+                        _SelectorRow(
+                          title: 'Grupo',
+                          value: _category == null
+                              ? 'Cualquiera'
+                              : CategoryConstants.labels[_category] ?? _category!,
+                          open: _open == _Section.group,
+                          onToggle: () => _toggle(_Section.group),
+                          child: _OptionList(
+                            options: [
+                              for (final id in CategoryConstants.ids)
+                                _Option(
+                                  id: id,
+                                  label: CategoryConstants.labels[id] ?? id,
+                                  dot: palette.categoryColor(id),
+                                ),
+                            ],
+                            selected: _category,
+                            onSelected: (id) => setState(() {
+                              _category = id;
+                              _open = null;
+                            }),
+                          ),
+                        ),
+                        divider,
+                        _SelectorRow(
+                          title: 'Estado de conservación',
+                          value: _status == null
+                              ? 'Cualquiera'
+                              : '$_status · ${ConservationConstants.labels[_status]}',
+                          open: _open == _Section.status,
+                          onToggle: () => _toggle(_Section.status),
+                          child: _OptionList(
+                            options: [
+                              for (final code in ConservationConstants.catalog)
+                                _Option(
+                                  id: code,
+                                  label:
+                                      '$code · ${ConservationConstants.labels[code]}',
+                                  dot: palette.uicnColor(code),
+                                ),
+                            ],
+                            selected: _status,
+                            onSelected: (code) => setState(() {
+                              _status = code;
+                              _open = null;
+                            }),
+                          ),
+                        ),
+                        divider,
+                        _SelectorRow(
+                          title: 'Peligrosidad',
+                          value: _danger == null
+                              ? 'Cualquiera'
+                              : TraitConstants.danger(_danger!),
+                          open: _open == _Section.danger,
+                          onToggle: () => _toggle(_Section.danger),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: SegmentedButton<String>(
+                                emptySelectionAllowed: true,
+                                showSelectedIcon: false,
+                                segments: [
+                                  for (final entry
+                                      in TraitConstants.dangerLevels.entries)
+                                    ButtonSegment(
+                                      value: entry.key,
+                                      label: Text(entry.value),
+                                    ),
+                                ],
+                                selected: {?_danger},
+                                onSelectionChanged: (s) => setState(
+                                  () => _danger = s.isEmpty ? null : s.first,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        divider,
+                        _SelectorRow(
+                          title: 'Profundidad',
+                          value: _depthMin == null
+                              ? 'Cualquiera'
+                              : 'Llegan a ${_fmt(_depthMin!)} m o más',
+                          open: _open == _Section.depth,
+                          onToggle: () => _toggle(_Section.depth),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                            child: _StepSlider(
+                              steps: MeasureConstants.depthFilterSteps,
+                              value: _depthMin,
+                              format: (v) => '${_fmt(v)} m o más',
+                              summary: 'Llegan al menos a',
+                              hint:
+                                  'Muestra las especies cuyo rango llega a esa profundidad o más. No indica a qué profundidad viven.',
+                              onChanged: (v) => setState(() => _depthMin = v),
+                            ),
+                          ),
+                        ),
+                        divider,
+                        _SelectorRow(
+                          title: 'Tamaño',
+                          value: _sizeMin == null
+                              ? 'Cualquiera'
+                              : 'Alcanzan ${SizeBar.format(_sizeMin!)} o más',
+                          open: _open == _Section.size,
+                          onToggle: () => _toggle(_Section.size),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                            child: _StepSlider(
+                              steps: MeasureConstants.sizeFilterSteps,
+                              value: _sizeMin,
+                              format: (v) => '${SizeBar.format(v)} o más',
+                              summary: 'Alcanzan al menos',
+                              hint:
+                                  'Muestra las especies cuya talla máxima llega a esa medida o más. No indica cuánto miden los ejemplares.',
+                              onChanged: (v) => setState(() => _sizeMin = v),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Fijos abajo: siempre a mano, aunque la lista se desplace
+          Padding(
+            padding: const EdgeInsets.all(DesignConstants.pagePadding),
+            child: Row(
+              children: [
+                // "Limpiar" solo tiene sentido cuando hay algo elegido
+                if (_hasDraft)
+                  TextButton(onPressed: _clear, child: const Text('Limpiar')),
+                const Spacer(),
+                FilledButton(onPressed: _apply, child: const Text('Aplicar')),
+              ],
+            ),
+          ),
+        ],
+      ),
+      ),
+    );
+  }
+}
+
+// Fila selectora: etiqueta, valor actual y flecha; al abrirse muestra su contenido debajo
+class _SelectorRow extends StatelessWidget {
+  final String title;
+  final String value;
+  final bool open;
+  final VoidCallback onToggle;
+  final Widget child;
+
+  const _SelectorRow({
+    required this.title,
+    required this.value,
+    required this.open,
+    required this.onToggle,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = OceanPalette.of(context);
+    final textTheme = Theme.of(context).textTheme;
+    final accent = Theme.of(context).colorScheme.primary;
+    final animate = !MediaQuery.disableAnimationsOf(context);
+    final duration = animate ? MotionConstants.short : Duration.zero;
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(
-              DesignConstants.pagePadding,
-              0,
-              DesignConstants.pagePadding,
-              DesignConstants.pagePadding,
+        InkWell(
+          onTap: onToggle,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: textTheme.titleSmall?.copyWith(color: palette.paper),
+                  ),
+                ),
+                Flexible(
+                  child: Text(
+                    value,
+                    textAlign: TextAlign.end,
+                    style: textTheme.labelLarge?.copyWith(
+                      color: value == 'Cualquiera'
+                          ? palette.paper.withValues(alpha: 0.6)
+                          : accent,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                AnimatedRotation(
+                  turns: open ? 0.5 : 0,
+                  duration: duration,
+                  curve: MotionConstants.curve,
+                  child: Icon(Icons.expand_more, color: palette.paper),
+                ),
+              ],
             ),
-            children: [
-              _SheetTitle('Grupo'),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final id in CategoryConstants.ids)
-                    CategoryTile(
-                      categoryId: id,
-                      compact: true,
-                      selected: _category == id,
-                      onTap: () => setState(
-                        () => _category = _category == id ? null : id,
-                      ),
-                    ),
-                ],
-              ),
-              _SheetTitle('Estado de conservación (UICN)'),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final code in ConservationConstants.catalog)
-                    FilterChip(
-                      label: Text('$code · ${ConservationConstants.labels[code]}'),
-                      selected: _status == code,
-                      showCheckmark: false,
-                      selectedColor: palette.uicnColor(code),
-                      labelStyle: TextStyle(
-                        color: _status == code
-                            ? palette.onColor(palette.uicnColor(code))
-                            : palette.paper,
-                      ),
-                      onSelected: (on) =>
-                          setState(() => _status = on ? code : null),
-                    ),
-                ],
-              ),
-              _SheetTitle('Peligrosidad'),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final entry in TraitConstants.dangerLevels.entries)
-                    FilterChip(
-                      label: Text(entry.value),
-                      selected: _danger == entry.key,
-                      onSelected: (on) =>
-                          setState(() => _danger = on ? entry.key : null),
-                    ),
-                ],
-              ),
-              _SheetTitle('Profundidad'),
-              _StepSlider(
-                steps: MeasureConstants.depthFilterSteps,
-                value: _depthMin,
-                format: (v) => '${_fmt(v)} m o más',
-                summary: 'Llegan al menos a',
-                hint:
-                    'Muestra las especies cuyo rango llega a esa profundidad o más. No indica a qué profundidad viven.',
-                onChanged: (v) => setState(() => _depthMin = v),
-              ),
-              _SheetTitle('Tamaño'),
-              _StepSlider(
-                steps: MeasureConstants.sizeFilterSteps,
-                value: _sizeMin,
-                format: (v) => '${SizeBar.format(v)} o más',
-                summary: 'Alcanzan al menos',
-                hint:
-                    'Muestra las especies cuya talla máxima llega a esa medida o más. No indica cuánto miden los ejemplares.',
-                onChanged: (v) => setState(() => _sizeMin = v),
-              ),
-            ],
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.all(DesignConstants.pagePadding),
-          child: Row(
-            children: [
-              TextButton(onPressed: _clear, child: const Text('Limpiar')),
-              const Spacer(),
-              FilledButton(onPressed: _apply, child: const Text('Aplicar')),
-            ],
-          ),
+        AnimatedSize(
+          duration: duration,
+          curve: MotionConstants.curve,
+          alignment: Alignment.topCenter,
+          child: open
+              ? SizedBox(width: double.infinity, child: child)
+              : const SizedBox(width: double.infinity),
         ),
       ],
     );
   }
 }
 
-class _SheetTitle extends StatelessWidget {
-  final String text;
+class _Option {
+  final String id;
+  final String label;
+  final Color dot;
 
-  const _SheetTitle(this.text);
+  const _Option({required this.id, required this.label, required this.dot});
+}
+
+// Lista de opciones con punto de color; tocar la elegida la quita
+class _OptionList extends StatelessWidget {
+  final List<_Option> options;
+  final String? selected;
+  final ValueChanged<String?> onSelected;
+
+  const _OptionList({
+    required this.options,
+    required this.selected,
+    required this.onSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: DesignConstants.sectionGap - 8, bottom: 12),
-      child: Text(
-        text.toUpperCase(),
-        style: Theme.of(context).textTheme.overline.copyWith(
-          color: Theme.of(context).colorScheme.primary,
+    final palette = OceanPalette.of(context);
+    final textTheme = Theme.of(context).textTheme;
+
+    Widget tile({
+      required String label,
+      required bool isSelected,
+      required VoidCallback onTap,
+      Color? dot,
+    }) {
+      return InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              // Mismo ancho con y sin punto para que las etiquetas queden alineadas
+              SizedBox(
+                width: 12,
+                height: 12,
+                child: dot == null
+                    ? null
+                    : DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: dot,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: textTheme.bodyMedium?.copyWith(color: palette.paper),
+                ),
+              ),
+              if (isSelected)
+                Icon(
+                  Icons.check,
+                  size: 20,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+            ],
+          ),
         ),
-      ),
+      );
+    }
+
+    return Column(
+      children: [
+        tile(
+          label: 'Cualquiera',
+          isSelected: selected == null,
+          onTap: () => onSelected(null),
+        ),
+        for (final option in options)
+          tile(
+            label: option.label,
+            dot: option.dot,
+            isSelected: selected == option.id,
+            onTap: () => onSelected(selected == option.id ? null : option.id),
+          ),
+      ],
     );
   }
 }
@@ -747,3 +1057,4 @@ class _StepSlider extends StatelessWidget {
     );
   }
 }
+

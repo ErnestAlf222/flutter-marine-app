@@ -10,8 +10,8 @@ import 'package:marine_app/domain/domain.dart';
 import 'package:marine_app/presentation/provider/providers.dart';
 import 'package:marine_app/presentation/widgets/widgets.dart';
 
-// Espacio que ocupa la cabecera sobre el héroe (botón de vidrio más margen)
-const double _headerHeight = 64;
+// Espacio que ocupa la cabecera sobre el héroe: nombre, buscador y márgenes
+const double _headerHeight = DesignConstants.homeHeaderHeight;
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -32,7 +32,8 @@ class HomeView extends ConsumerStatefulWidget {
 }
 
 class _HomeViewState extends ConsumerState<HomeView> {
-  final _searchController = SearchController();
+  // El campo de Inicio nunca se edita (solo abre Explorar), así que su texto siempre está vacío
+  final _searchController = TextEditingController();
 
   @override
   void dispose() {
@@ -41,25 +42,67 @@ class _HomeViewState extends ConsumerState<HomeView> {
   }
 
   // Inicio no lista resultados: deja los filtros listos y abre Explorar
-  void _openExplore({String? query, String? category, double? depthMin}) {
+  void _openExplore({
+    String? query,
+    String? category,
+    double? depthMin,
+    double? sizeMin,
+    String? dangerLevel,
+    String? conservationStatus,
+  }) {
     final filters = ref.read(speciesFiltersProvider.notifier)..clear();
     if (query != null) filters.setQuery(query);
     if (category != null) filters.setCategory(category);
     if (depthMin != null) filters.setDepthRange(depthMin, null);
+    if (sizeMin != null) filters.setSizeRange(sizeMin, null);
+    if (dangerLevel != null) filters.setDangerLevel(dangerLevel);
+    if (conservationStatus != null) {
+      filters.setConservationStatus(conservationStatus);
+    }
     context.go(RouteConstants.explore);
   }
 
-  void _search(String text) {
-    final query = text.trim();
-    if (query.isEmpty) return;
+  void _openCollection(CollectionDef collection) => _openExplore(
+    sizeMin: collection.sizeMinCm,
+    dangerLevel: collection.dangerLevel,
+    conservationStatus: collection.conservationStatus,
+  );
 
-    _searchController.closeView('');
-    _openExplore(query: query);
+  bool _surprising = false;
+
+  // Abre el Detalle de una especie al azar; mientras busca, el botón se desactiva
+  Future<void> _surprise() async {
+    setState(() => _surprising = true);
+    try {
+      final species = await ref.read(surpriseSpeciesProvider)();
+      if (!mounted) return;
+      openSpecies(context, species);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              error is String ? error : 'Ocurrió un error inesperado.',
+            ),
+          ),
+        );
+    } finally {
+      if (mounted) setState(() => _surprising = false);
+    }
+  }
+
+  // Abre Explorar con el buscador enfocado y el teclado listo para escribir
+  void _focusSearchInExplore() {
+    ref.read(searchFocusRequestProvider.notifier).request();
+    context.go(RouteConstants.explore);
   }
 
   Future<void> _refresh() async {
     ref.invalidate(featuredSpeciesProvider);
     ref.invalidate(discoverSpeciesProvider);
+    ref.invalidate(collectionCountProvider);
     try {
       await ref.read(featuredSpeciesProvider.future);
     } catch (_) {
@@ -81,36 +124,31 @@ class _HomeViewState extends ConsumerState<HomeView> {
         slivers: [
           SliverToBoxAdapter(
             child: _HeroSection(
-              header: Row(
+              header: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    AppConstants.appName,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: palette.paper,
-                    ),
-                  ),
-                  const Spacer(),
-                  SearchAnchor(
-                    searchController: _searchController,
-                    isFullScreen: true,
-                    viewHintText: 'Buscar especies',
-                    viewOnSubmitted: _search,
-                    builder: (context, controller) => GlassButton(
-                      icon: Icons.search,
-                      tooltip: 'Buscar especies',
-                      onPressed: controller.openView,
-                    ),
-                    suggestionsBuilder: (context, controller) {
-                      final query = controller.text.trim();
-                      if (query.isEmpty) return const <Widget>[];
-                      return [
-                        ListTile(
-                          leading: const Icon(Icons.search),
-                          title: Text('Buscar «$query»'),
-                          onTap: () => _search(query),
+                  Row(
+                    children: [
+                      Text(
+                        AppConstants.appName,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: palette.paper,
                         ),
-                      ];
-                    },
+                      ),
+                      const Spacer(),
+                      // Créditos y licencias, que antes vivían en la pestaña Acerca de
+                      GlassButton(
+                        icon: Icons.info_outline,
+                        size: DesignConstants.creditButtonSize,
+                        tooltip: 'Créditos',
+                        onPressed: () => showCreditsSheet(context),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SpeciesSearchField(
+                    controller: _searchController,
+                    onTap: _focusSearchInExplore,
                   ),
                 ],
               ),
@@ -176,7 +214,135 @@ class _HomeViewState extends ConsumerState<HomeView> {
               ),
             ),
           ),
+          const SliverToBoxAdapter(
+            child: _SectionHeader(overline: 'ATAJOS', title: 'Colecciones'),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: DesignConstants.pagePadding,
+              ),
+              child: Row(
+                children: [
+                  for (final (i, collection)
+                      in CollectionConstants.items.indexed) ...[
+                    if (i > 0) const SizedBox(width: DesignConstants.gridGap),
+                    Expanded(
+                      child: StaggeredEntry(
+                        index: i,
+                        child: _CollectionCard(
+                          collection: collection,
+                          onTap: () => _openCollection(collection),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                DesignConstants.pagePadding,
+                DesignConstants.sectionGap,
+                DesignConstants.pagePadding,
+                DesignConstants.sectionGap * 2,
+              ),
+              child: SizedBox(
+                height: 64,
+                child: FilledButton.icon(
+                  onPressed: _surprising ? null : _surprise,
+                  // Mientras busca, un pez pequeño nada en lugar del icono
+                  icon: _surprising
+                      ? const FishLoader.small()
+                      : const Icon(Icons.shuffle),
+                  label: Text(
+                    _surprising ? 'Buscando una especie…' : 'Sorpréndeme',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+// Tarjeta de colección: icono, conteo leído de la API y nombre
+class _CollectionCard extends ConsumerWidget {
+  final CollectionDef collection;
+  final VoidCallback onTap;
+
+  const _CollectionCard({required this.collection, required this.onTap});
+
+  // Los colores salen de la paleta: el coral es de peligro y la escala UICN pone el rojo
+  Color _background(OceanPalette palette) => switch (collection.id) {
+    'venomous' => palette.coral,
+    'critical' => palette.uicnColor('CR'),
+    _ => palette.reef,
+  };
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final palette = OceanPalette.of(context);
+    final textTheme = Theme.of(context).textTheme;
+    final background = _background(palette);
+    final foreground = palette.onColor(background);
+    final count = ref.watch(collectionCountProvider(collection.id));
+
+    return Material(
+      color: background,
+      borderRadius: BorderRadius.circular(DesignConstants.tileRadius),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: SizedBox(
+            height: DesignConstants.collectionCardHeight,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Icon(collection.icon, color: foreground),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Mientras llega el conteo, o si falla, la tarjeta sigue siendo útil
+                    count.when(
+                      skipLoadingOnReload: true,
+                      loading: () => SizedBox(
+                        width: 36,
+                        height: 22,
+                        child: SkeletonBox(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                      error: (_, _) => const SizedBox(height: 22),
+                      data: (total) => Text(
+                        formatSpeciesCount(total),
+                        style: textTheme.titleLarge?.copyWith(
+                          color: foreground,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      collection.label,
+                      style: textTheme.labelMedium?.copyWith(
+                        color: foreground,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -565,19 +731,14 @@ class _HeroCard extends StatelessWidget {
             Positioned.fill(
               child: Material(
                 type: MaterialType.transparency,
-                child: InkWell(
-                  onTap: () => context.push(
-                    RouteConstants.speciesLocation(species.slug),
-                    extra: species,
-                  ),
-                ),
+                child: InkWell(onTap: () => openSpecies(context, species)),
               ),
             ),
             // Después del InkWell para que el corazón reciba su propio toque
             Positioned(
               top: 16,
               right: 16,
-              child: FavoriteButton(species: species),
+              child: FavoriteButton(species: species, large: true),
             ),
           ],
         ),
@@ -701,11 +862,9 @@ class _DiscoverSliver extends ConsumerWidget {
           itemBuilder: (context, index) => StaggeredEntry(
             index: index,
             child: SpeciesTile(
+              parallax: true,
               species: species[index],
-              onTap: () => context.push(
-                RouteConstants.speciesLocation(species[index].slug),
-                extra: species[index],
-              ),
+              onTap: () => openSpecies(context, species[index]),
               aspectRatio:
                   DesignConstants.mosaicAspects[index %
                       DesignConstants.mosaicAspects.length],

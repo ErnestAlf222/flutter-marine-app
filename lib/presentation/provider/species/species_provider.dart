@@ -64,6 +64,39 @@ final featuredSpeciesProvider = FutureProvider<List<Species>>((ref) {
   );
 });
 
+// Cuántas especies tiene una colección de Inicio: se lee del total de la paginación
+// con per_page=1, así no hay ningún número escrito a mano
+final collectionCountProvider = FutureProvider.family<int, String>((
+  ref,
+  id,
+) async {
+  final collection = CollectionConstants.byId(id);
+  final (page, error) = await ref.watch(speciesRepositoryProvider).getSpecies(
+    lang: ApiConstants.appLang,
+    page: 1,
+    perPage: 1,
+    sizeMin: collection.sizeMinCm,
+    dangerLevel: collection.dangerLevel,
+    conservationStatus: collection.conservationStatus,
+  );
+
+  if (page == null) throw error;
+  return page.total;
+});
+
+// "Sorpréndeme": una especie cualquiera. Con per_page=1 sobre el total, elegir una
+// página al azar es elegir una especie al azar.
+final surpriseSpeciesProvider = Provider<Future<Species> Function()>((ref) {
+  return () async {
+    final picked = await _randomPage(
+      ref.read(speciesRepositoryProvider),
+      perPage: 1,
+    );
+    if (picked.isEmpty) throw 'No se encontró ninguna especie.';
+    return picked.first;
+  };
+});
+
 // Mosaico "Descubre más": especies al azar sin repetir las del héroe, porque el
 // slug es el tag del Hero y no puede haber dos iguales en pantalla
 final discoverSpeciesProvider = FutureProvider<List<Species>>((ref) async {

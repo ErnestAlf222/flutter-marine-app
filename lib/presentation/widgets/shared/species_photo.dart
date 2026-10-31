@@ -2,8 +2,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:marine_app/config/config.dart';
+import 'package:marine_app/presentation/widgets/shared/fish_loader.dart';
 
-// Las fotos viven en hosts distintos, así que se usa la URL tal cual con caché
+// Las fotos viven en hosts distintos, así que se usa la URL tal cual con caché.
+// Siempre recorta (cover): es lo que ven las tarjetas y el Hero, sin saltos de encuadre.
 // Se llama View para no chocar con la entidad SpeciesPhoto del domain
 class SpeciesPhotoView extends StatelessWidget {
   final String? url;
@@ -26,9 +28,12 @@ class SpeciesPhotoView extends StatelessWidget {
     final palette = OceanPalette.of(context);
     final base = palette.categoryColor(category);
 
-    Widget placeholder([IconData? icon]) => ColoredBox(
+    // Mientras la foto carga, un pez pequeño nada sobre el color del grupo
+    Widget placeholder([IconData? icon, bool loading = false]) => ColoredBox(
       color: base,
-      child: icon == null
+      child: loading
+          ? const Center(child: FishLoader.small())
+          : icon == null
           ? null
           : Center(
               child: Icon(
@@ -51,7 +56,7 @@ class SpeciesPhotoView extends StatelessWidget {
       memCacheWidth: cacheWidth,
       fadeInDuration: MotionConstants.short,
       fadeInCurve: MotionConstants.curve,
-      placeholder: (_, _) => placeholder(),
+      placeholder: (_, _) => placeholder(null, true),
       errorWidget: (_, _, _) => placeholder(Icons.broken_image_outlined),
     );
   }

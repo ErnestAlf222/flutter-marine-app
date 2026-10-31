@@ -11,3 +11,20 @@ final zonesProvider = FutureProvider<List<OceanZone>>((ref) async {
   if (zones == null) throw error;
   return zones;
 });
+
+// Destacadas de una zona. El servidor falla con 6 de 7 zonas (500), así que el
+// error es un estado esperado y la hoja lo muestra como una nota neutra
+final zoneTopSpeciesProvider = FutureProvider.family<List<Species>, String>((
+  ref,
+  zone,
+) async {
+  final repository = ref.watch(speciesRepositoryProvider);
+  final (species, error) = await repository.getZoneTopSpecies(
+    zone: zone,
+    lang: ApiConstants.appLang,
+    limit: ApiConstants.zoneTopLimit,
+  );
+
+  if (species == null) throw error;
+  return species;
+});

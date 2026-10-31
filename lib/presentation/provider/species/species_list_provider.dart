@@ -12,6 +12,8 @@ class SpeciesListState {
   final bool isLoadingMore;
   // Un fallo al pedir más no debe borrar lo ya cargado, por eso va aparte
   final String? loadMoreError;
+  // La búsqueda por texto llegó al tope de la API (50): puede haber más coincidencias
+  final bool searchCapped;
 
   const SpeciesListState({
     required this.items,
@@ -19,6 +21,7 @@ class SpeciesListState {
     required this.hasNextPage,
     this.isLoadingMore = false,
     this.loadMoreError,
+    this.searchCapped = false,
   });
 
   SpeciesListState copyWith({
@@ -36,6 +39,7 @@ class SpeciesListState {
       loadMoreError: loadMoreError != null
           ? loadMoreError()
           : this.loadMoreError,
+      searchCapped: searchCapped,
     );
   }
 }
@@ -51,6 +55,7 @@ class SpeciesListNotifier extends AsyncNotifier<SpeciesListState> {
       items: page.items,
       page: page.page,
       hasNextPage: page.hasNextPage,
+      searchCapped: page.searchCapped,
     );
   }
 
@@ -101,12 +106,16 @@ class SpeciesListNotifier extends AsyncNotifier<SpeciesListState> {
       );
       if (items == null) throw error;
 
-      // /search devuelve todo de una vez: se presenta como página única
+      // /search no admite filtros: se aplican aquí. Devuelve todo de una vez (hasta su
+      // tope de 50), así que se presenta como página única
+      final filtered = items.where(filters.matches).toList();
       return SpeciesPage(
-        items: items,
+        items: filtered,
         page: 1,
-        perPage: items.length,
-        total: items.length,
+        perPage: filtered.length,
+        total: filtered.length,
+        // Si la búsqueda llegó al tope puede haber coincidencias que no se trajeron
+        searchCapped: items.length >= ApiConstants.searchResultCap,
       );
     }
 

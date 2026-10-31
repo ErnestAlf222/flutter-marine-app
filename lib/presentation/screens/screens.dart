@@ -13,5 +13,5 @@ export 'species/species_detail_screen.dart';
 // Favorites
 export 'favorites/favorites_screen.dart';
 
-// About
-export 'about/about_screen.dart';
+// Map
+export 'map/map_screen.dart';

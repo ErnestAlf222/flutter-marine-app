@@ -140,13 +140,11 @@ class _FavoritesViewState extends ConsumerState<FavoritesView> {
                   curve: MotionConstants.curve,
                   scale: leaving ? MotionConstants.removeScale : 1,
                   child: SpeciesTile(
+                    parallax: true,
                     species: species,
                     aspectRatio: DesignConstants
                         .mosaicAspects[index % DesignConstants.mosaicAspects.length],
-                    onTap: () => context.push(
-                      RouteConstants.speciesLocation(species.slug),
-                      extra: species,
-                    ),
+                    onTap: () => openSpecies(context, species),
                     onRemoveFavorite: () => _remove(species),
                   ),
                 ),

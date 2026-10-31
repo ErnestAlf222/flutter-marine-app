@@ -1,8 +1,7 @@
-import 'dart:ui';
-
 import 'package:material_ui/material_ui.dart';
 
 import 'package:marine_app/config/config.dart';
+import 'package:marine_app/presentation/widgets/shared/glass_surface.dart';
 
 // Botón circular de vidrio: desenfoca lo que hay detrás, ideal sobre fotos
 class GlassButton extends StatelessWidget {
@@ -12,6 +11,7 @@ class GlassButton extends StatelessWidget {
   // Para el favorito marcado: el icono pasa al coral de acento
   final bool selected;
   final IconData? selectedIcon;
+  final double size;
 
   const GlassButton({
     super.key,
@@ -20,6 +20,7 @@ class GlassButton extends StatelessWidget {
     this.tooltip,
     this.selected = false,
     this.selectedIcon,
+    this.size = DesignConstants.glassSize,
   });
 
   @override
@@ -28,26 +29,21 @@ class GlassButton extends StatelessWidget {
 
     return Tooltip(
       message: tooltip ?? '',
-      child: ClipOval(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(
-            sigmaX: DesignConstants.glassBlur,
-            sigmaY: DesignConstants.glassBlur,
-          ),
-          child: Material(
-            color: palette.ink.withValues(alpha: DesignConstants.glassAlpha),
-            child: InkWell(
-              onTap: onPressed,
-              child: SizedBox.square(
-                dimension: DesignConstants.glassSize,
-                child: AnimatedSwitcher(
-                  duration: MotionConstants.short,
-                  switchInCurve: MotionConstants.curve,
-                  child: Icon(
-                    selected ? (selectedIcon ?? icon) : icon,
-                    key: ValueKey(selected),
-                    color: selected ? palette.coral : palette.paper,
-                  ),
+      child: GlassSurface(
+        circle: true,
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: onPressed,
+            child: SizedBox.square(
+              dimension: size,
+              child: AnimatedSwitcher(
+                duration: MotionConstants.short,
+                switchInCurve: MotionConstants.curve,
+                child: Icon(
+                  selected ? (selectedIcon ?? icon) : icon,
+                  key: ValueKey(selected),
+                  color: selected ? palette.coral : palette.paper,
                 ),
               ),
             ),

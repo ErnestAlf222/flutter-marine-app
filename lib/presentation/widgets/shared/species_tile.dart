@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:marine_app/config/config.dart';
 import 'package:marine_app/domain/domain.dart';
 import 'package:marine_app/presentation/widgets/shared/favorite_button.dart';
+import 'package:marine_app/presentation/widgets/shared/parallax_photo.dart';
 import 'package:marine_app/presentation/widgets/shared/photo_scrim.dart';
 import 'package:marine_app/presentation/widgets/shared/species_photo.dart';
 
@@ -14,6 +15,8 @@ class SpeciesTile extends StatelessWidget {
   final VoidCallback? onTap;
   // Favoritos anima la salida antes de quitar; en el resto se quita al instante
   final Future<void> Function()? onRemoveFavorite;
+  // La foto se desplaza dentro de la tarjeta al hacer scroll vertical (mosaico y cuadrículas)
+  final bool parallax;
 
   const SpeciesTile({
     super.key,
@@ -21,7 +24,16 @@ class SpeciesTile extends StatelessWidget {
     this.aspectRatio = DesignConstants.photoAspect,
     this.onTap,
     this.onRemoveFavorite,
+    this.parallax = false,
   });
+
+  Widget _photo() {
+    final photo = SpeciesPhotoView(
+      url: species.primaryPhoto,
+      category: species.category,
+    );
+    return parallax ? ParallaxPhoto(child: photo) : photo;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,10 +54,7 @@ class SpeciesTile extends StatelessWidget {
               enabled: TickerMode.valuesOf(context).enabled,
               child: Hero(
                 tag: species.slug,
-                child: SpeciesPhotoView(
-                  url: species.primaryPhoto,
-                  category: species.category,
-                ),
+                child: _photo(),
               ),
             ),
             const PhotoScrim(),

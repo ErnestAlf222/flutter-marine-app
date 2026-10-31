@@ -1,7 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:marine_app/config/config.dart';
+import 'package:marine_app/domain/domain.dart';
+
 class SpeciesFilters {
-  // Con texto se usa /search, que no admite los demás filtros ni pagina
+  // Con texto se usa /search, que no admite filtros ni pagina: los filtros se aplican
+  // en el cliente sobre sus resultados (ver [matches])
   final String query;
   final String? category;
   final String? zone;
@@ -24,7 +28,27 @@ class SpeciesFilters {
     this.depthMax,
   });
 
-  bool get hasQuery => query.trim().isNotEmpty;
+  // Con un solo carácter /search no devuelve nada, así que aún no cuenta como búsqueda
+  bool get hasQuery => query.trim().length >= ApiConstants.minSearchLength;
+
+  /// Aplica los filtros a una especie en el cliente, con la misma semántica que el
+  /// servidor: profundidad y tamaño son "al menos" (el rango llega a ese valor o más).
+  /// Una especie sin ese dato no puede cumplir el filtro.
+  bool matches(Species s) {
+    if (category != null && s.category != category) return false;
+    if (conservationStatus != null && s.conservationStatus != conservationStatus) {
+      return false;
+    }
+    if (dangerLevel != null && s.dangerLevel != dangerLevel) return false;
+
+    final depth = depthMin;
+    if (depth != null && (s.depthMaxM == null || s.depthMaxM! < depth)) return false;
+
+    final size = sizeMin;
+    if (size != null && (s.sizeMaxCm == null || s.sizeMaxCm! < size)) return false;
+
+    return true;
+  }
 
   // Solo cuenta los filtros que Explorar muestra (la zona no se ofrece: el servidor falla)
   int get activeCount => [

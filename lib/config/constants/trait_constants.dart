@@ -105,6 +105,13 @@ class TraitConstants {
     'venomous': 'Venenosa',
   };
 
+  // Qué significa cada nivel para quien bucea o pisa la orilla
+  static const Map<String, String> dangerPhrases = {
+    'harmless': 'No representa un peligro conocido para las personas.',
+    'caution': 'Puede lastimar si se la molesta o se la toca: conviene observarla de lejos.',
+    'venomous': 'Tiene veneno que puede dañar a las personas: no se debe tocar.',
+  };
+
   // Niveles que merecen el color de alerta; el resto se muestra neutro
   static const Set<String> dangerous = {'caution', 'venomous'};
 
@@ -113,6 +120,8 @@ class TraitConstants {
   static String behavior(String id) => behaviors[id] ?? _readable(id);
 
   static String danger(String id) => dangerLevels[id] ?? _readable(id);
+
+  static String? dangerPhrase(String id) => dangerPhrases[id];
 
   // "reef-flat" -> "Reef flat"
   static String _readable(String id) {

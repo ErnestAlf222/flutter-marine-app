@@ -115,6 +115,25 @@ class SpeciesDatasourcesImpl extends SpeciesDatasource {
     }
   }
 
+  @override
+  Future<(List<Species>?, String)> getZoneTopSpecies({
+    required String zone,
+    required String lang,
+    required int limit,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '${ApiConstants.zonesPath}/$zone/${ApiConstants.zoneTopSpeciesSegment}',
+        queryParameters: {'lang': lang, 'limit': limit},
+      );
+
+      final data = SpeciesListResponse.fromJson(response.data);
+      return (data.data.map(SpeciesMapper.speciesToEntity).toList(), '');
+    } catch (e) {
+      return (null, _errorMessage(e));
+    }
+  }
+
   // Mensajes en español para mostrar tal cual en la pantalla
   String _errorMessage(Object error) {
     if (error is DioException) {

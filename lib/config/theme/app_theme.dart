@@ -24,6 +24,10 @@ class OceanPalette extends ThemeExtension<OceanPalette> {
   final Map<String, Color> categories;
   final Color categoryFallback;
 
+  // Un color por zona oceánica del mapa
+  final Map<String, Color> zones;
+  final Color zoneFallback;
+
   const OceanPalette({
     required this.surface,
     required this.reef,
@@ -36,6 +40,8 @@ class OceanPalette extends ThemeExtension<OceanPalette> {
     required this.uicnUnknown,
     required this.categories,
     required this.categoryFallback,
+    required this.zones,
+    required this.zoneFallback,
   });
 
   // Los colores de las fichas de grupo llegan a 4.7:1 o más con texto blanco,
@@ -74,6 +80,17 @@ class OceanPalette extends ThemeExtension<OceanPalette> {
       'other': Color(0xFF5B6B7B),
     },
     categoryFallback: Color(0xFF5B6B7B),
+    // Brillos del mapa: matices repartidos y ninguno cerca del coral de acento
+    zones: {
+      'macaronesia': Color(0xFFF2D14B),
+      'east-atlantic': Color(0xFF9BE564),
+      'asian-pacific': Color(0xFF3DDC97),
+      'caribbean': Color(0xFF29D3E0),
+      'mediterranean': Color(0xFF5B8DEF),
+      'eastern-pacific': Color(0xFF9B7BFF),
+      'indian-red-sea': Color(0xFFF06BC0),
+    },
+    zoneFallback: Color(0xFF8FA3B5),
   );
 
   static OceanPalette of(BuildContext context) =>
@@ -89,6 +106,8 @@ class OceanPalette extends ThemeExtension<OceanPalette> {
   Color categoryColor(String id) => categories[id] ?? categoryFallback;
 
   Color uicnColor(String? code) => uicn[code] ?? uicnUnknown;
+
+  Color zoneColor(String id) => zones[id] ?? zoneFallback;
 
   /// Texto legible sobre [background]: el de mayor contraste entre tinta y papel
   Color onColor(Color background) {
@@ -114,6 +133,8 @@ class OceanPalette extends ThemeExtension<OceanPalette> {
     uicnUnknown: uicnUnknown,
     categories: categories,
     categoryFallback: categoryFallback,
+    zones: zones,
+    zoneFallback: zoneFallback,
   );
 
   // Un solo tema oscuro en la v1: no hay nada que interpolar

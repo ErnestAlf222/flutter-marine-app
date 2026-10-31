@@ -60,9 +60,7 @@ class SpeciesDetailView extends ConsumerWidget {
                 collapseMode: CollapseMode.parallax,
                 background: _DetailHeader(
                   species: species,
-                  credit: detail.asData?.value == null
-                      ? null
-                      : _primaryCredit(detail.asData!.value),
+                  credit: _creditOf(detail.asData?.value),
                   loading: detail.isLoading,
                 ),
               ),
@@ -117,23 +115,83 @@ class SpeciesDetailView extends ConsumerWidget {
               bottom: false,
               child: Padding(
                 padding: const EdgeInsets.all(DesignConstants.pagePadding),
-                child: FavoriteButton(species: species),
+                // Arriba junto a la foto solo queda el corazón; el crédito va al final
+                child: FavoriteButton(species: species, large: true),
               ),
             ),
           ),
       ],
     );
   }
+}
 
-  // Crédito de la foto principal; si ninguna está marcada, el de la primera
-  String? _primaryCredit(SpeciesDetail detail) {
-    if (detail.photos.isEmpty) return null;
-    final primary = detail.photos.firstWhere(
-      (p) => p.isPrimary,
-      orElse: () => detail.photos.first,
-    );
-    return primary.credit;
-  }
+// Crédito de la foto principal; si ninguna está marcada, el de la primera
+String? _creditOf(SpeciesDetail? detail) {
+  if (detail == null || detail.photos.isEmpty) return null;
+  final primary = detail.photos.firstWhere(
+    (p) => p.isPrimary,
+    orElse: () => detail.photos.first,
+  );
+  final credit = primary.credit?.trim();
+  return credit == null || credit.isEmpty ? null : credit;
+}
+
+// La licencia suele venir entre paréntesis al final: "© Autor / iNaturalist (CC0)"
+String? _licenseOf(String credit) =>
+    RegExp(r'\(([^()]+)\)\s*$').firstMatch(credit)?.group(1);
+
+Future<void> _showCredit(BuildContext context, String credit) {
+  final license = _licenseOf(credit);
+
+  return showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    backgroundColor: OceanPalette.of(context).abyss,
+    builder: (context) {
+      final palette = OceanPalette.of(context);
+      final textTheme = Theme.of(context).textTheme;
+
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            DesignConstants.pagePadding,
+            0,
+            DesignConstants.pagePadding,
+            DesignConstants.sectionGap,
+          ),
+          child: SizedBox(
+            width: double.infinity,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'CRÉDITO DE LA FOTO',
+                  style: textTheme.overline.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  credit,
+                  style: textTheme.bodyLarge?.copyWith(color: palette.paper),
+                ),
+                if (license != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    'Licencia: $license',
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: palette.paper.withValues(alpha: 0.8),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
 }
 
 class _DetailHeader extends StatelessWidget {
@@ -162,12 +220,20 @@ class _DetailHeader extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        Hero(
-          tag: current.slug,
-          child: SpeciesPhotoView(
+        // Tocar la foto la abre a pantalla completa con zoom
+        GestureDetector(
+          onTap: current.primaryPhoto == null
+              ? null
+              : () => PhotoViewer.show(
+                  context,
+                  url: current.primaryPhoto!,
+                  category: current.category,
+                  credit: credit,
+                ),
+          child: DetailPhoto(
             url: current.primaryPhoto,
             category: current.category,
-            cacheWidth: DesignConstants.heroPhotoCacheWidth,
+            heroTag: current.slug,
           ),
         ),
         const PhotoScrim(
@@ -176,7 +242,8 @@ class _DetailHeader extends StatelessWidget {
         ),
         Positioned(
           left: DesignConstants.pagePadding,
-          right: DesignConstants.pagePadding,
+          // Deja libre la esquina del botón para ver la foto entera
+          right: DesignConstants.pagePadding + DesignConstants.glassSize + 12,
           bottom: 24,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -203,58 +270,7 @@ class _DetailHeader extends StatelessWidget {
             ],
           ),
         ),
-        if (credit != null)
-          Positioned(
-            top: 0,
-            right: 0,
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                // Deja libre la esquina para el corazón, que va fijo encima
-                padding: const EdgeInsets.fromLTRB(
-                  DesignConstants.pagePadding,
-                  DesignConstants.pagePadding,
-                  DesignConstants.pagePadding + DesignConstants.glassSize + 12,
-                  DesignConstants.pagePadding,
-                ),
-                child: _CreditChip(text: credit!),
-              ),
-            ),
-          ),
       ],
-    );
-  }
-}
-
-// Crédito de la foto en la esquina, exigido por la licencia de las imágenes
-class _CreditChip extends StatelessWidget {
-  final String text;
-
-  const _CreditChip({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = OceanPalette.of(context);
-
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.5),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: palette.ink.withValues(alpha: DesignConstants.glassAlpha * 1.6),
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          child: Text(
-            text,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: palette.paper,
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -277,14 +293,6 @@ class _DetailBody extends StatelessWidget {
 
     // Cada bloque entra escalonado; el índice sale del orden en que se agregan
     final blocks = <Widget>[
-      Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          ConservationBadge(status: detail.conservationStatus),
-          DangerBadge(level: detail.dangerLevel),
-        ],
-      ),
       TaxonomyCrumbs(taxonomy: detail.taxonomy),
       if (description != null && description.isNotEmpty)
         Text(
@@ -295,6 +303,9 @@ class _DetailBody extends StatelessWidget {
           ),
         ),
       if (_hasMeasures) _Measures(detail: detail),
+      if (detail.conservationStatus != null)
+        ConservationScale(status: detail.conservationStatus),
+      if (detail.dangerLevel != null) DangerInfo(level: detail.dangerLevel),
       if (detail.habitats.isNotEmpty)
         _TraitSection(
           title: 'Hábitats',
@@ -307,7 +318,20 @@ class _DetailBody extends StatelessWidget {
           icon: Icons.visibility_outlined,
           labels: detail.behaviors.map(TraitConstants.behavior).toList(),
         ),
-      if (detail.zones.isNotEmpty) _ZonesSection(slugs: detail.zones),
+      if (detail.zones.isNotEmpty) _WhereLives(slugs: detail.zones),
+      // Al final de la página, discreto pero a la vista: abre el crédito y la licencia
+      if (_creditOf(detail) case final credit?)
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            icon: const Icon(Icons.copyright, size: 18),
+            label: const Text('Créditos de la foto'),
+            style: TextButton.styleFrom(
+              foregroundColor: palette.paper.withValues(alpha: 0.75),
+            ),
+            onPressed: () => _showCredit(context, credit),
+          ),
+        ),
     ];
 
     return Column(
@@ -439,27 +463,66 @@ class _ChipWrap extends StatelessWidget {
   }
 }
 
-// Las zonas llegan como slugs; sus nombres salen de /zones (si falla, se muestra el slug legible)
-class _ZonesSection extends ConsumerWidget {
+// "Dónde vive": mini mapa informativo con las zonas de la especie resaltadas y, debajo,
+// un chip por zona que abre la pestaña Mapa con esa zona seleccionada. Las zonas llegan
+// como slugs; sus nombres y posiciones salen de /zones (si falla, se muestra el slug legible).
+class _WhereLives extends ConsumerWidget {
   final List<String> slugs;
 
-  const _ZonesSection({required this.slugs});
+  const _WhereLives({required this.slugs});
+
+  void _openOnMap(BuildContext context, WidgetRef ref, String slug) {
+    ref.read(selectedZoneProvider.notifier).select(slug);
+    context.go(RouteConstants.map);
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final names = {
-      for (final zone in ref.watch(zonesProvider).asData?.value ?? <OceanZone>[])
-        zone.id: zone.name,
-    };
+    final palette = OceanPalette.of(context);
+    final zones = ref.watch(zonesProvider).asData?.value;
+    final land = ref.watch(worldLandProvider).asData?.value;
+    final names = {for (final zone in zones ?? <OceanZone>[]) zone.id: zone.name};
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _BlockTitle('Zonas'),
-        _ChipWrap(
-          icon: Icons.public,
-          labels: [
-            for (final slug in slugs) names[slug] ?? TraitConstants.readable(slug),
+        const _BlockTitle('Dónde vive'),
+        if (zones != null) ...[
+          SizedBox(
+            height: MapConstants.compactHeight,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(DesignConstants.tileRadius),
+              child: OceanMap(
+                compact: true,
+                zones: zones,
+                land: land,
+                highlighted: slugs.toSet(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final slug in slugs)
+              ActionChip(
+                avatar: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: palette.zoneColor(slug),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const SizedBox.square(dimension: 12),
+                ),
+                label: Text(names[slug] ?? TraitConstants.readable(slug)),
+                side: BorderSide.none,
+                backgroundColor: palette.deep,
+                labelStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: palette.paper,
+                ),
+                onPressed: () => _openOnMap(context, ref, slug),
+              ),
           ],
         ),
       ],

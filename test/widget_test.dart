@@ -14,5 +14,8 @@ void main() {
 
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.byType(NavigationDestination), findsNWidgets(4));
+    // La cuarta pestaña es el Mapa; Acerca de ya no existe
+    expect(find.text('Mapa'), findsOneWidget);
+    expect(find.text('Acerca de'), findsNothing);
   });
 }

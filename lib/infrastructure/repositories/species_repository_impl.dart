@@ -59,4 +59,13 @@ class SpeciesRepositoryImpl extends SpeciesRepository {
   Future<(List<OceanZone>?, String)> getZones({required String lang}) {
     return datasource.getZones(lang: lang);
   }
+
+  @override
+  Future<(List<Species>?, String)> getZoneTopSpecies({
+    required String zone,
+    required String lang,
+    required int limit,
+  }) {
+    return datasource.getZoneTopSpecies(zone: zone, lang: lang, limit: limit);
+  }
 }

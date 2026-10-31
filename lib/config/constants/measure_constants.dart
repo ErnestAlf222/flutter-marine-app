@@ -40,6 +40,14 @@ class MeasureConstants {
   static const List<double> depthFilterSteps = [0, 10, 25, 50, 100, 200, 500, 1000, 2000];
   static const List<double> sizeFilterSteps = [0, 10, 25, 50, 100, 200, 500, 1000];
 
+  // Textos de las tarjetas: qué rango se muestra y qué significan los extremos
+  static const String depthQuestion = 'Entre qué profundidades se le encuentra';
+  static const String sizeQuestion = 'Entre qué tamaños se le encuentra';
+  static const String surfaceLabel = 'Superficie';
+  static const String bottomLabel = 'Fondo';
+  static const String smallLabel = 'Más pequeño';
+  static const String largeLabel = 'Más grande';
+
   static const List<SizeReference> sizeReferences = [
     SizeReference(label: 'Moneda', cm: 2.5, icon: Icons.monetization_on_outlined),
     SizeReference(label: 'Mano', cm: 18, icon: Icons.back_hand_outlined),
