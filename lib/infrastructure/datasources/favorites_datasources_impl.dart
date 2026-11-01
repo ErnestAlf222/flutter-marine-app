@@ -1,29 +1,12 @@
 import 'package:isar_community/isar.dart';
-import 'package:path_provider/path_provider.dart';
 
 import 'package:marine_app/domain/domain.dart';
+import 'package:marine_app/infrastructure/datasources/isar_db.dart';
 import 'package:marine_app/infrastructure/mappers/favorite_mapper.dart';
 import 'package:marine_app/infrastructure/models/favorite_species_collection.dart';
 
 class FavoritesDatasourcesImpl implements FavoritesDatasource {
-  // Isar no admite abrir dos veces la misma base: una instancia compartida por toda la app
-  static Future<Isar>? _instance;
-
-  Future<Isar> _db() {
-    return _instance ??= _open().catchError((Object e) {
-      // Si falló, el siguiente intento vuelve a abrir en lugar de repetir el error
-      _instance = null;
-      throw e;
-    });
-  }
-
-  static Future<Isar> _open() async {
-    final existing = Isar.getInstance();
-    if (existing != null) return existing;
-
-    final dir = await getApplicationDocumentsDirectory();
-    return Isar.open([FavoriteSpeciesCollectionSchema], directory: dir.path);
-  }
+  Future<Isar> _db() => IsarDb.open();
 
   @override
   Future<(bool?, String)> saveFavorite(Species species) async {

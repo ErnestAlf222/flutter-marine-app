@@ -1,16 +1,21 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'package:marine_app/presentation/provider/providers.dart';
 import 'package:marine_app/presentation/widgets/widgets.dart';
 
-class ShellScreen extends StatelessWidget {
+class ShellScreen extends ConsumerWidget {
   // Mantiene el estado de cada pestaña al cambiar entre ellas
   final StatefulNavigationShell navigationShell;
 
   const ShellScreen({super.key, required this.navigationShell});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Leerlo basta para que el catálogo local empiece a sincronizarse con la app
+    ref.read(catalogSyncProvider);
+
     return Scaffold(
       // El degradado de profundidad vive aquí; las pestañas usan Scaffold transparente
       body: OceanBackground(child: navigationShell),

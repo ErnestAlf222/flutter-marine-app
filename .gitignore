@@ -49,3 +49,6 @@ app.*.map.json
 
 # Variables de entorno locales (se versiona solo .env.example)
 .env
+
+# Catálogo descargado para las pruebas de aceptación de la búsqueda
+/tool/catalog/

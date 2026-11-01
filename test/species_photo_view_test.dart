@@ -44,11 +44,11 @@ Widget _frame(Widget photo, {Duration routeTime = Duration.zero}) {
   );
 }
 
-DetailPhoto _detail(ImageProvider provider) => DetailPhoto(
-  url: null,
+DetailGallery _detail(ImageProvider provider) => DetailGallery(
+  photos: const [GalleryPhoto(url: null)],
   category: 'fish',
   heroTag: 'especie',
-  provider: provider,
+  providers: [provider],
 );
 
 Future<void> _open(WidgetTester tester, ImageProvider provider, {Duration routeTime = Duration.zero}) async {
@@ -89,7 +89,7 @@ void main() {
     });
   });
 
-  group('DetailPhoto', () {
+  group('DetailGallery con una foto', () {
     testWidgets('una foto apaisada extrema pasa a verse entera al terminar el Hero', (
       tester,
     ) async {
@@ -132,12 +132,35 @@ void main() {
 
       await tester.tap(find.byTooltip('Ver la foto entera'));
       await tester.pump(MotionConstants.short);
+      // El botón se entera un cuadro después: la foto avisa a la cabecera al terminar el suyo
+      await tester.pump();
       expect(find.byType(ImageFiltered), findsOneWidget);
 
       await tester.tap(find.byTooltip('Llenar el marco'));
       // Una animación cuenta desde su primer cuadro: se espera a que termine el fundido de salida
       await tester.pumpAndSettle();
       expect(find.byType(ImageFiltered), findsNothing);
+    });
+
+    testWidgets('el botón mide 48 dp, lleva etiqueta y la cambia con el modo', (
+      tester,
+    ) async {
+      final provider = (await tester.runAsync(() => _fakePhoto(768, 1024)))!;
+      await _open(tester, provider);
+      await tester.pump(MotionConstants.short);
+
+      expect(find.text(DetailConstants.showWhole), findsOneWidget);
+      final pill = find.ancestor(
+        of: find.text(DetailConstants.showWhole),
+        matching: find.byType(InkWell),
+      );
+      expect(tester.getSize(pill).height, DesignConstants.photoToggleHeight);
+      expect(DesignConstants.photoToggleHeight, greaterThanOrEqualTo(48));
+
+      await tester.tap(find.byTooltip('Ver la foto entera'));
+      await tester.pump(MotionConstants.short);
+      await tester.pump();
+      expect(find.text(DetailConstants.fillFrame), findsOneWidget);
     });
 
     testWidgets('la elección manual gana sobre el modo automático', (tester) async {

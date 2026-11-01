@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:marine_app/config/config.dart';
 import 'package:marine_app/domain/domain.dart';
@@ -26,11 +27,21 @@ class SpeciesDetailScreen extends StatelessWidget {
   }
 }
 
-class SpeciesDetailView extends ConsumerWidget {
+class SpeciesDetailView extends ConsumerStatefulWidget {
   final String slug;
   final Species? preview;
 
   const SpeciesDetailView({super.key, required this.slug, this.preview});
+
+  @override
+  ConsumerState<SpeciesDetailView> createState() => _SpeciesDetailViewState();
+}
+
+class _SpeciesDetailViewState extends ConsumerState<SpeciesDetailView> {
+  // Foto que se está viendo en la galería: de ella sale el crédito de la hoja de créditos
+  int _photoIndex = 0;
+
+  String get slug => widget.slug;
 
   void _back(BuildContext context) {
     // Con un enlace directo no hay pantalla anterior a la que volver
@@ -42,106 +53,156 @@ class SpeciesDetailView extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final detail = ref.watch(speciesDetailProvider(slug));
-    final species = detail.asData?.value ?? preview;
+    final species = detail.asData?.value ?? widget.preview;
+    final photos = _galleryOf(species, detail.asData?.value);
     final height = MediaQuery.sizeOf(context).height;
 
-    return Stack(
-      children: [
-        CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              automaticallyImplyLeading: false,
-              backgroundColor: Colors.transparent,
-              expandedHeight: height * DesignConstants.detailHeaderFraction,
-              stretch: true,
-              flexibleSpace: FlexibleSpaceBar(
-                collapseMode: CollapseMode.parallax,
-                background: _DetailHeader(
-                  species: species,
-                  credit: _creditOf(detail.asData?.value),
-                  loading: detail.isLoading,
-                ),
-              ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(
-                DesignConstants.pagePadding,
-                DesignConstants.sectionGap,
-                DesignConstants.pagePadding,
-                DesignConstants.sectionGap * 2,
-              ),
-              sliver: SliverToBoxAdapter(
-                child: detail.whenRetry(
-                  skipLoadingOnReload: true,
-                  loading: () => const _BodySkeleton(),
-                  error: (error, _) => _DetailMessage(
-                    notFound: error == ApiConstants.notFoundMessage,
-                    message: error is String
-                        ? error
-                        : 'Ocurrió un error inesperado.',
-                    onRetry: () => ref.invalidate(speciesDetailProvider(slug)),
-                    onBack: () => _back(context),
+    return PullToDismiss(
+      onDismiss: () => _back(context),
+      builder: (context, scroll, physics) => Stack(
+        children: [
+          CustomScrollView(
+            controller: scroll,
+            physics: physics,
+            slivers: [
+              SliverAppBar(
+                automaticallyImplyLeading: false,
+                backgroundColor: Colors.transparent,
+                expandedHeight: height * DesignConstants.detailHeaderFraction,
+                stretch: true,
+                flexibleSpace: FlexibleSpaceBar(
+                  collapseMode: CollapseMode.parallax,
+                  background: _DetailHeader(
+                    species: species,
+                    photos: photos,
+                    loading: detail.isLoading,
+                    // Mientras el Detalle se arrastra para cerrarse, las fotos no se deslizan
+                    swipeEnabled: physics is! NeverScrollableScrollPhysics,
+                    showHint: !ref.watch(galleryHintProvider),
+                    onHintShown: () =>
+                        ref.read(galleryHintProvider.notifier).markShown(),
+                    onPageChanged: (i) => setState(() => _photoIndex = i),
                   ),
-                  data: (data) => _DetailBody(detail: data),
                 ),
               ),
-            ),
-          ],
-        ),
-        // Fijo: el botón de volver sigue a mano aunque la foto se desplace
-        Positioned(
-          top: 0,
-          left: 0,
-          child: SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.all(DesignConstants.pagePadding),
-              child: GlassButton(
-                icon: Icons.arrow_back,
-                tooltip: 'Volver',
-                onPressed: () => _back(context),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(
+                  DesignConstants.pagePadding,
+                  DesignConstants.sectionGap,
+                  DesignConstants.pagePadding,
+                  DesignConstants.sectionGap * 2,
+                ),
+                sliver: SliverToBoxAdapter(
+                  child: detail.whenRetry(
+                    skipLoadingOnReload: true,
+                    loading: () => const _BodySkeleton(),
+                    error: (error, _) => _DetailMessage(
+                      notFound: error == ApiConstants.notFoundMessage,
+                      message: error is String
+                          ? error
+                          : 'Ocurrió un error inesperado.',
+                      onRetry: () =>
+                          ref.invalidate(speciesDetailProvider(slug)),
+                      onBack: () => _back(context),
+                    ),
+                    data: (data) =>
+                        _DetailBody(detail: data, photoIndex: _photoIndex),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-        ),
-        // Sin especie (enlace directo aún cargando) no hay nada que guardar
-        if (species != null)
+          // Fijo: el botón de volver sigue a mano aunque la foto se desplace
           Positioned(
             top: 0,
-            right: 0,
+            left: 0,
             child: SafeArea(
               bottom: false,
               child: Padding(
                 padding: const EdgeInsets.all(DesignConstants.pagePadding),
-                // Arriba junto a la foto solo queda el corazón; el crédito va al final
-                child: FavoriteButton(species: species, large: true),
+                child: GlassButton(
+                  icon: Icons.arrow_back,
+                  tooltip: 'Volver',
+                  onPressed: () => _back(context),
+                ),
               ),
             ),
           ),
-      ],
+          // Sin especie (enlace directo aún cargando) no hay nada que guardar
+          if (species != null)
+            Positioned(
+              top: 0,
+              right: 0,
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.all(DesignConstants.pagePadding),
+                  // Arriba junto a la foto solo queda el corazón; el crédito va al final
+                  child: FavoriteButton(species: species, large: true),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
 
-// Crédito de la foto principal; si ninguna está marcada, el de la primera
-String? _creditOf(SpeciesDetail? detail) {
-  if (detail == null || detail.photos.isEmpty) return null;
-  final primary = detail.photos.firstWhere(
-    (p) => p.isPrimary,
-    orElse: () => detail.photos.first,
-  );
-  final credit = primary.credit?.trim();
-  return credit == null || credit.isEmpty ? null : credit;
+// Fotos de la galería, la principal primero (el Hero es de la primera). Antes de que llegue
+// el detalle solo se conoce la foto de la tarjeta.
+List<GalleryPhoto> _galleryOf(Species? species, SpeciesDetail? detail) {
+  final photos = detail?.photos ?? const <SpeciesPhoto>[];
+  if (photos.isEmpty) return [GalleryPhoto(url: species?.primaryPhoto)];
+
+  final primary = photos.indexWhere((p) => p.isPrimary);
+  final ordered = [
+    if (primary >= 0) photos[primary],
+    for (var i = 0; i < photos.length; i++)
+      if (i != primary) photos[i],
+  ];
+  return [
+    for (final p in ordered)
+      GalleryPhoto(url: p.url, credit: _cleanCredit(p.credit)),
+  ];
+}
+
+String? _cleanCredit(String? credit) {
+  final trimmed = credit?.trim();
+  return trimmed == null || trimmed.isEmpty ? null : trimmed;
+}
+
+// Crédito de la foto que se está viendo
+String? _creditOf(SpeciesDetail? detail, int index) {
+  if (detail == null) return null;
+  final photos = _galleryOf(detail, detail);
+  return photos[index.clamp(0, photos.length - 1)].credit;
 }
 
 // La licencia suele venir entre paréntesis al final: "© Autor / iNaturalist (CC0)"
 String? _licenseOf(String credit) =>
     RegExp(r'\(([^()]+)\)\s*$').firstMatch(credit)?.group(1);
 
-Future<void> _showCredit(BuildContext context, String credit) {
-  final license = _licenseOf(credit);
+// Un navegador ausente o una URL rechazada no deben dejar el enlace sin respuesta
+Future<void> _openLink(BuildContext context, String url) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final opened = await launchUrl(
+    Uri.parse(url),
+    mode: LaunchMode.externalApplication,
+  ).catchError((_) => false);
+
+  if (!opened) {
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(content: Text(DetailConstants.openLinkError)),
+      );
+  }
+}
+
+Future<void> _showCredit(BuildContext context, String? credit) {
+  final license = credit == null ? null : _licenseOf(credit);
 
   return showModalBottomSheet<void>(
     context: context,
@@ -166,16 +227,21 @@ Future<void> _showCredit(BuildContext context, String credit) {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'CRÉDITO DE LA FOTO',
+                  (credit == null
+                          ? DetailConstants.creditsTitle
+                          : DetailConstants.photoCreditTitle)
+                      .toUpperCase(),
                   style: textTheme.overline.copyWith(
                     color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  credit,
-                  style: textTheme.bodyLarge?.copyWith(color: palette.paper),
-                ),
+                if (credit != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    credit,
+                    style: textTheme.bodyLarge?.copyWith(color: palette.paper),
+                  ),
+                ],
                 if (license != null) ...[
                   const SizedBox(height: 12),
                   Text(
@@ -185,6 +251,17 @@ Future<void> _showCredit(BuildContext context, String credit) {
                     ),
                   ),
                 ],
+                // Atribución de los datos (CC BY-SA 4.0), con enlace al proveedor
+                const SizedBox(height: 12),
+                TextButton.icon(
+                  icon: const Icon(Icons.open_in_new, size: 18),
+                  label: const Text(DetailConstants.dataCredit),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    foregroundColor: Theme.of(context).colorScheme.primary,
+                  ),
+                  onPressed: () => _openLink(context, UrlConstants.speciesBlue),
+                ),
               ],
             ),
           ),
@@ -196,13 +273,21 @@ Future<void> _showCredit(BuildContext context, String credit) {
 
 class _DetailHeader extends StatelessWidget {
   final Species? species;
-  final String? credit;
+  final List<GalleryPhoto> photos;
   final bool loading;
+  final bool swipeEnabled;
+  final bool showHint;
+  final VoidCallback onHintShown;
+  final ValueChanged<int> onPageChanged;
 
   const _DetailHeader({
     required this.species,
-    required this.credit,
+    required this.photos,
     required this.loading,
+    required this.swipeEnabled,
+    required this.showHint,
+    required this.onHintShown,
+    required this.onPageChanged,
   });
 
   @override
@@ -217,68 +302,63 @@ class _DetailHeader extends StatelessWidget {
           : ColoredBox(color: palette.deep);
     }
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Tocar la foto la abre a pantalla completa con zoom
-        GestureDetector(
-          onTap: current.primaryPhoto == null
-              ? null
-              : () => PhotoViewer.show(
-                  context,
-                  url: current.primaryPhoto!,
-                  category: current.category,
-                  credit: credit,
-                ),
-          child: DetailPhoto(
-            url: current.primaryPhoto,
-            category: current.category,
-            heroTag: current.slug,
+    return DetailGallery(
+      photos: photos,
+      category: current.category,
+      heroTag: current.slug,
+      swipeEnabled: swipeEnabled,
+      showHint: showHint,
+      onHintShown: onHintShown,
+      onPageChanged: onPageChanged,
+      // Tocar la foto la abre a pantalla completa, en la foto que se está viendo
+      onTap: (index) {
+        final withUrl = [
+          for (final p in photos)
+            if (p.url != null) p,
+        ];
+        if (photos[index].url == null) return;
+        PhotoViewer.show(
+          context,
+          category: current.category,
+          photos: [
+            for (final p in withUrl) ViewerPhoto(url: p.url!, credit: p.credit),
+          ],
+          initialIndex: withUrl.indexOf(photos[index]),
+        );
+      },
+      footer: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            (CategoryConstants.labels[current.category] ?? current.category)
+                .toUpperCase(),
+            style: textTheme.overline.copyWith(
+              color: Theme.of(context).colorScheme.primary,
+            ),
           ),
-        ),
-        const PhotoScrim(
-          coverage: DesignConstants.heroScrimCoverage,
-          solid: DesignConstants.detailScrimSolid,
-        ),
-        Positioned(
-          left: DesignConstants.pagePadding,
-          // Deja libre la esquina del botón para ver la foto entera
-          right: DesignConstants.pagePadding + DesignConstants.glassSize + 12,
-          bottom: 24,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                (CategoryConstants.labels[current.category] ?? current.category)
-                    .toUpperCase(),
-                style: textTheme.overline.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                current.commonName,
-                style: textTheme.headlineLarge?.copyWith(color: palette.paper),
-              ),
-              Text(
-                current.scientificName,
-                style: textTheme.scientific.copyWith(
-                  color: palette.paper.withValues(alpha: 0.85),
-                ),
-              ),
-            ],
+          const SizedBox(height: 6),
+          Text(
+            current.commonName,
+            style: textTheme.headlineLarge?.copyWith(color: palette.paper),
           ),
-        ),
-      ],
+          Text(
+            current.scientificName,
+            style: textTheme.scientific.copyWith(
+              color: palette.paper.withValues(alpha: 0.85),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
 class _DetailBody extends StatelessWidget {
   final SpeciesDetail detail;
+  final int photoIndex;
 
-  const _DetailBody({required this.detail});
+  const _DetailBody({required this.detail, required this.photoIndex});
 
   bool get _hasMeasures =>
       detail.depthMinM != null ||
@@ -293,7 +373,7 @@ class _DetailBody extends StatelessWidget {
 
     // Cada bloque entra escalonado; el índice sale del orden en que se agregan
     final blocks = <Widget>[
-      TaxonomyCrumbs(taxonomy: detail.taxonomy),
+      TaxonomySection(taxonomy: detail.taxonomy),
       if (description != null && description.isNotEmpty)
         Text(
           description,
@@ -319,19 +399,19 @@ class _DetailBody extends StatelessWidget {
           labels: detail.behaviors.map(TraitConstants.behavior).toList(),
         ),
       if (detail.zones.isNotEmpty) _WhereLives(slugs: detail.zones),
-      // Al final de la página, discreto pero a la vista: abre el crédito y la licencia
-      if (_creditOf(detail) case final credit?)
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            icon: const Icon(Icons.copyright, size: 18),
-            label: const Text('Créditos de la foto'),
-            style: TextButton.styleFrom(
-              foregroundColor: palette.paper.withValues(alpha: 0.75),
-            ),
-            onPressed: () => _showCredit(context, credit),
+      // Al final de la página, discreto pero a la vista: abre los créditos (siempre, para
+      // que la atribución de los datos no dependa de que la foto traiga crédito)
+      Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton.icon(
+          icon: const Icon(Icons.copyright, size: 18),
+          label: const Text(DetailConstants.creditsButton),
+          style: TextButton.styleFrom(
+            foregroundColor: palette.paper.withValues(alpha: 0.75),
           ),
+          onPressed: () => _showCredit(context, _creditOf(detail, photoIndex)),
         ),
+      ),
     ];
 
     return Column(
@@ -403,9 +483,8 @@ class _BlockTitle extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Text(
         text.toUpperCase(),
-        style: Theme.of(context).textTheme.overline.copyWith(
-          color: Theme.of(context).colorScheme.primary,
-        ),
+        style: Theme.of(context).textTheme.overline
+            .copyWith(color: Theme.of(context).colorScheme.primary),
       ),
     );
   }
@@ -454,9 +533,8 @@ class _ChipWrap extends StatelessWidget {
             label: Text(label),
             side: BorderSide.none,
             backgroundColor: palette.deep,
-            labelStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: palette.paper,
-            ),
+            labelStyle: Theme.of(context).textTheme.labelLarge
+                ?.copyWith(color: palette.paper),
           ),
       ],
     );
@@ -481,7 +559,9 @@ class _WhereLives extends ConsumerWidget {
     final palette = OceanPalette.of(context);
     final zones = ref.watch(zonesProvider).asData?.value;
     final land = ref.watch(worldLandProvider).asData?.value;
-    final names = {for (final zone in zones ?? <OceanZone>[]) zone.id: zone.name};
+    final names = {
+      for (final zone in zones ?? <OceanZone>[]) zone.id: zone.name,
+    };
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -518,9 +598,8 @@ class _WhereLives extends ConsumerWidget {
                 label: Text(names[slug] ?? TraitConstants.readable(slug)),
                 side: BorderSide.none,
                 backgroundColor: palette.deep,
-                labelStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: palette.paper,
-                ),
+                labelStyle: Theme.of(context).textTheme.labelLarge
+                    ?.copyWith(color: palette.paper),
                 onPressed: () => _openOnMap(context, ref, slug),
               ),
           ],
@@ -539,7 +618,10 @@ class _BodySkeleton extends StatelessWidget {
 
     Widget block(double height) => Padding(
       padding: const EdgeInsets.only(bottom: 20),
-      child: SizedBox(height: height, child: SkeletonBox(borderRadius: radius)),
+      child: SizedBox(
+        height: height,
+        child: SkeletonBox(borderRadius: radius),
+      ),
     );
 
     return Column(children: [block(32), block(20), block(120), block(72)]);

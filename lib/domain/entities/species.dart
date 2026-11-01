@@ -16,6 +16,8 @@ class Species {
   final String? shortDescription;
   final String? primaryPhoto;
   final bool featured;
+  // Fecha de última modificación en la API: el catálogo local la compara para actualizarse
+  final String? updatedAt;
 
   const Species({
     required this.id,
@@ -34,5 +36,6 @@ class Species {
     this.shortDescription,
     this.primaryPhoto,
     this.featured = false,
+    this.updatedAt,
   });
 }

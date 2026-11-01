@@ -2,6 +2,17 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:marine_app/config/config.dart';
 
+/// Opacidad del degradado a [distance] (0 en el borde oscuro, 1 en el opuesto).
+double scrimAlphaAt(
+  double distance, {
+  required double solid,
+  required double coverage,
+  double strength = 1,
+}) {
+  final fade = ((distance - solid) / (coverage - solid)).clamp(0.0, 1.0);
+  return DesignConstants.scrimAlpha * strength * (1 - fade);
+}
+
 // Degradado oscuro para que el texto sobre una foto se lea; va dentro de un Stack
 class PhotoScrim extends StatelessWidget {
   // Lado donde el degradado es más oscuro

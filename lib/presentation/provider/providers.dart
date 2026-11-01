@@ -1,6 +1,9 @@
 // Utilidades de AsyncValue
 export 'async_retry.dart';
 
+// Catalog
+export 'catalog/catalog_provider.dart';
+
 // Favorites
 export 'favorites/favorites_provider.dart';
 
@@ -10,6 +13,7 @@ export 'map/world_land_provider.dart';
 
 // Species
 export 'species/filter_bubble_provider.dart';
+export 'species/gallery_hint_provider.dart';
 export 'species/search_focus_provider.dart';
 export 'species/species_filters_provider.dart';
 export 'species/species_list_provider.dart';

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:marine_app/config/config.dart';
 import 'package:marine_app/domain/domain.dart';
+import 'package:marine_app/presentation/provider/catalog/catalog_provider.dart';
 import 'package:marine_app/presentation/provider/species/species_filters_provider.dart';
 import 'package:marine_app/presentation/provider/species/species_provider.dart';
 
@@ -49,6 +50,8 @@ class SpeciesListNotifier extends AsyncNotifier<SpeciesListState> {
   @override
   Future<SpeciesListState> build() async {
     final filters = ref.watch(speciesFiltersProvider);
+    // Cuando el catálogo local queda listo, la lista se rehace con él
+    ref.watch(catalogSyncProvider.select((s) => s.ready));
     final page = await _fetchPage(filters, 1);
 
     return SpeciesListState(
@@ -96,47 +99,81 @@ class SpeciesListNotifier extends AsyncNotifier<SpeciesListState> {
     }
   }
 
-  // Busca por texto. El servidor distingue acentos, así que si "tiburon" vuelve vacío se
-  // prueba con prefijos más cortos ("tibur") y se queda con lo que coincide sin acentos
+  // Busca por texto. El servidor solo entiende una cadena y distingue acentos ("tiburon toro"
+  // no devuelve nada), así que se le pide la palabra más larga y el cliente exige que TODAS
+  // las palabras coincidan, por raíz y sin acentos, en el nombre común o el científico.
+  // Si la palabra vuelve vacía se prueba su raíz sin plural y prefijos más cortos.
   Future<(List<Species>, bool)> _search(
     SpeciesRepository repository,
     String query,
   ) async {
+    final words = TextUtils.tokens(query);
+    if (words.isEmpty) return (const <Species>[], false);
+    final primary = words.reduce((a, b) => b.length > a.length ? b : a);
+    final severalWords = words.length > 1;
+
     final (items, error) = await repository.searchSpecies(
-      query: query,
+      query: primary,
       lang: ApiConstants.appLang,
     );
     if (items == null) throw error;
 
+    bool matches(Species s) =>
+        TextUtils.matchesQuery(query, '${s.commonName} ${s.scientificName}');
+
     final capped = items.length >= ApiConstants.searchResultCap;
-    // Con acentos escritos el servidor ya acertó; con resultados no hay nada que arreglar
-    if (items.isNotEmpty || TextUtils.hasDiacritics(query)) return (items, capped);
+    // Con una sola palabra el servidor ya acertó (también por nombres en otros idiomas);
+    // con varias solo trajo la más larga y falta exigir las demás
+    if (items.isNotEmpty) {
+      return (severalWords ? items.where(matches).toList() : items, capped);
+    }
+    // Con acentos escritos no hay nada que arreglar
+    if (TextUtils.hasDiacritics(primary)) return (items, capped);
 
-    final wanted = TextUtils.fold(query);
-    var length = query.length;
-    for (var i = 0; i < ApiConstants.searchFallbackMaxRequests; i++) {
-      length -= ApiConstants.searchFallbackTrim;
-      if (length < ApiConstants.searchFallbackMinLength) break;
+    final stemmed = TextUtils.stem(primary);
+    final attempts = <String>{
+      if (stemmed != primary) stemmed,
+      for (
+        var length = primary.length - ApiConstants.searchFallbackTrim;
+        length >= ApiConstants.searchFallbackMinLength;
+        length -= ApiConstants.searchFallbackTrim
+      )
+        primary.substring(0, length),
+    }.take(ApiConstants.searchFallbackMaxRequests);
 
+    for (final attempt in attempts) {
       final (shorter, shorterError) = await repository.searchSpecies(
-        query: query.substring(0, length),
+        query: attempt,
         lang: ApiConstants.appLang,
       );
       if (shorter == null) throw shorterError;
 
-      final matches = shorter
-          .where(
-            (s) => TextUtils.fold('${s.commonName} ${s.scientificName}').contains(wanted),
-          )
-          .toList();
-      if (matches.isNotEmpty) {
-        return (matches, shorter.length >= ApiConstants.searchResultCap);
+      final found = shorter.where(matches).toList();
+      if (found.isNotEmpty) {
+        return (found, shorter.length >= ApiConstants.searchResultCap);
       }
     }
     return (items, capped);
   }
 
   Future<SpeciesPage> _fetchPage(SpeciesFilters filters, int page) async {
+    // Con el catálogo listo, búsqueda y filtros se resuelven en el dispositivo y sin tope;
+    // la zona solo existe en el servidor. Si el catálogo no está, se sigue como siempre
+    if (filters.zone == null) {
+      final local = await ref.read(catalogRepositoryProvider).search(
+        query: filters.query.trim(),
+        filter: filters.matches,
+      );
+      if (local != null) {
+        return SpeciesPage(
+          items: local,
+          page: 1,
+          perPage: local.length,
+          total: local.length,
+        );
+      }
+    }
+
     final repository = ref.read(speciesRepositoryProvider);
 
     if (filters.hasQuery) {

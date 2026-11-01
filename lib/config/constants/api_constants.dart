@@ -19,6 +19,16 @@ class ApiConstants {
   // Tras un "Reintentar" que también falla se dice con claridad, sin ofrecer otro intento
   static const String zoneRetryFailedMessage =
       'Probamos de nuevo y el servidor de speCies.blue sigue sin responder.';
+
+  // Muestra de una zona armada desde los detalles (top-species falla en 6 de 7 zonas):
+  // se mide con curl que ~1 de cada 3 destacadas trae una zona cualquiera. Hasta 8 especies,
+  // 4 detalles a la vez y como mucho 24 detalles por zona (25 peticiones con la página de
+  // destacadas); si fallan 4 detalles se deja de insistir
+  static const int zoneSampleSize = 8;
+  static const int zoneSampleConcurrency = 4;
+  static const int zoneSampleMaxDetails = 24;
+  static const int zoneSampleMaxFailures = 4;
+  static const int zoneSamplePool = 100;
   static const String speciesBySlugPath = '/species/by-slug';
 
   // El servidor recorta a 100 sin avisar, así que el tope se respeta aquí
@@ -50,8 +60,22 @@ class ApiConstants {
   static const int searchFallbackMinLength = 3;
   static const int searchFallbackMaxRequests = 2;
 
+  // Plurales del español: solo se recortan palabras de al menos 4 letras y la raíz
+  // resultante conserva al menos 3 ("peces" -> "pez", "mas" se queda igual)
+  static const int searchStemMinWord = 4;
+  static const int searchStemMinRoot = 3;
+
   // Pausa tras la última tecla antes de buscar: el límite es de 100 peticiones por minuto
   static const Duration searchDebounce = Duration(milliseconds: 600);
+
+  // Límite anónimo: 100 peticiones por minuto. Cerca del límite (por defecto 90) las demás
+  // se ponen en cola en vez de dispararse, para esperar un poco y no recibir errores. Las de
+  // baja prioridad (la muestra de zonas) ceden el paso a las de la pantalla que se ve y solo
+  // salen mientras haya menos de rateLimitLowThreshold en la ventana, dejando holgura
+  static const int rateLimit = 100;
+  static const int rateLimitThreshold = 90;
+  static const int rateLimitLowThreshold = 60;
+  static const Duration rateLimitWindow = Duration(minutes: 1);
 
   // Holgados: la API llega a tardar 5 s por petición
   static const Duration connectTimeout = Duration(seconds: 15);

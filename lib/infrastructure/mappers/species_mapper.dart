@@ -23,6 +23,7 @@ class SpeciesMapper {
     shortDescription: r.shortDescription,
     primaryPhoto: r.primaryPhoto,
     featured: r.featured,
+    updatedAt: r.updatedAt,
   );
 
   // /search no trae `pagination`: se tolera con valores que no inviten a pedir más

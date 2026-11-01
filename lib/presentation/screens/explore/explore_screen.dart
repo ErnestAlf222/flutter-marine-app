@@ -187,9 +187,49 @@ class _ExploreViewState extends ConsumerState<ExploreView> {
             onClear: _clearQuery,
           ),
         ),
-        _ActiveFilters(onClearQuery: _clearQuery),
+        const _CatalogProgress(),
+        const _ActiveFilters(),
         const Expanded(child: _Results()),
       ],
+    );
+  }
+}
+
+// Primera sincronización del catálogo: el pez y "x de 16". Mientras tanto la búsqueda usa el
+// servidor. La actualización posterior va en silencio y aquí no se ve.
+class _CatalogProgress extends ConsumerWidget {
+  const _CatalogProgress();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(catalogSyncProvider);
+    if (!status.showProgress) return const SizedBox.shrink();
+
+    final palette = OceanPalette.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        DesignConstants.pagePadding,
+        DesignConstants.filterChipGap,
+        DesignConstants.pagePadding,
+        0,
+      ),
+      child: Row(
+        children: [
+          const FishLoader.small(),
+          const SizedBox(width: DesignConstants.filterChipGap),
+          Expanded(
+            child: Text(
+              status.total == 0
+                  ? '${CatalogConstants.preparing}…'
+                  : CatalogConstants.progress(status.step, status.total),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: palette.paper.withValues(alpha: 0.75),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -198,122 +238,142 @@ class _ExploreViewState extends ConsumerState<ExploreView> {
 // Filtros activos
 // ---------------------------------------------------------------------------
 
+// Una sola fila compacta bajo el buscador. El texto de búsqueda no se repite aquí: vive
+// solo en la barra, que ya tiene su X
 class _ActiveFilters extends ConsumerWidget {
-  final VoidCallback onClearQuery;
-
-  const _ActiveFilters({required this.onClearQuery});
+  const _ActiveFilters();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final filters = ref.watch(speciesFiltersProvider);
     final notifier = ref.read(speciesFiltersProvider.notifier);
+    final palette = OceanPalette.of(context);
+    final accent = Theme.of(context).colorScheme.primary;
 
-    final chips = <Widget>[
+    // Etiqueta, color del punto y cómo se quita
+    final chips = <(String, Color, VoidCallback)>[
       if (filters.category != null)
-        _removable(
+        (
           CategoryConstants.labels[filters.category] ?? filters.category!,
+          palette.categoryColor(filters.category!),
           () => notifier.setCategory(null),
         ),
       if (filters.conservationStatus != null)
-        _removable(
+        (
           '${filters.conservationStatus} · ${ConservationConstants.labels[filters.conservationStatus] ?? ''}',
+          palette.uicnColor(filters.conservationStatus),
           () => notifier.setConservationStatus(null),
         ),
       if (filters.dangerLevel != null)
-        _removable(
+        (
           TraitConstants.danger(filters.dangerLevel!),
+          palette.coral,
           () => notifier.setDangerLevel(null),
         ),
       if (filters.depthMin != null)
-        _removable(
+        (
           'Llegan a ${_fmt(filters.depthMin!)} m o más',
+          accent,
           () => notifier.setDepthRange(null, null),
         ),
       if (filters.sizeMin != null)
-        _removable(
+        (
           'Alcanzan ${SizeBar.format(filters.sizeMin!)} o más',
+          accent,
           () => notifier.setSizeRange(null, null),
         ),
     ];
 
-    if (chips.isEmpty && !filters.hasQuery) return const SizedBox.shrink();
+    // Sin filtros la fila no ocupa espacio
+    if (chips.isEmpty) return const SizedBox.shrink();
+
+    final shown = chips.take(DesignConstants.filterChipsShown).toList();
+    final extra = chips.length - shown.length;
 
     return Padding(
-      padding: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.only(top: DesignConstants.filterChipGap),
       child: SizedBox(
-        height: 44,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(
-            horizontal: DesignConstants.pagePadding,
-          ),
+        height: DesignConstants.filterChipHeight,
+        child: Row(
           children: [
-            // Con texto, los filtros se aplican sobre los resultados de la búsqueda
-            if (filters.hasQuery)
-              _chip('«${filters.query.trim()}»', onClearQuery),
-            ...chips,
-            if (chips.length > 1)
-              _GlassChip(
-                label: 'Quitar todos',
-                onTap: () =>
-                    notifier.apply(SpeciesFilters(query: filters.query)),
+            Expanded(
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.only(left: DesignConstants.pagePadding),
+                children: [
+                  for (final (label, color, onRemove) in shown)
+                    _GlassChip(label: label, dot: color, onRemove: onRemove),
+                ],
               ),
+            ),
+            // Fijo a la derecha: los demás filtros se ven y se quitan en la hoja
+            Padding(
+              padding: const EdgeInsets.only(right: DesignConstants.pagePadding),
+              child: extra > 0
+                  ? _GlassChip(label: '+$extra', onTap: () => _openFilters(context))
+                  : const SizedBox(width: DesignConstants.pagePadding),
+            ),
           ],
         ),
       ),
     );
   }
-
-  Widget _chip(String label, VoidCallback onRemove) =>
-      _GlassChip(label: label, onRemove: onRemove);
-
-  Widget _removable(String label, VoidCallback onRemove) =>
-      _chip(label, onRemove);
 }
 
-// Chip de cristal: translúcido con desenfoque, borde fino y, si se puede quitar, una X
+// Chip de cristal pequeño: punto de color, texto y, si se puede quitar, una X
 class _GlassChip extends StatelessWidget {
   final String label;
+  final Color? dot;
   final VoidCallback? onRemove;
   final VoidCallback? onTap;
 
-  const _GlassChip({required this.label, this.onRemove, this.onTap});
+  const _GlassChip({required this.label, this.dot, this.onRemove, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final palette = OceanPalette.of(context);
 
     return Padding(
-      padding: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.only(right: DesignConstants.filterChipGap),
       child: GlassSurface(
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(DesignConstants.filterChipHeight),
         tintAlpha: DesignConstants.glassSolidAlpha,
         child: Material(
           type: MaterialType.transparency,
           child: InkWell(
             onTap: onRemove ?? onTap,
             child: Padding(
-              padding: const EdgeInsets.only(left: 14, right: 8),
+              padding: EdgeInsets.only(
+                left: DesignConstants.filterChipPad,
+                right: onRemove != null ? 6 : DesignConstants.filterChipPad,
+              ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (dot != null) ...[
+                    DecoratedBox(
+                      decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+                      child: const SizedBox.square(
+                        dimension: DesignConstants.filterChipDot,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
                   Text(
                     label,
-                    style: Theme.of(context).textTheme.labelLarge
-                        ?.copyWith(color: palette.paper),
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: palette.paper,
+                    ),
                   ),
-                  if (onRemove != null)
-                    Padding(
-                      padding: const EdgeInsets.all(6),
-                      child: Icon(
-                        Icons.close,
-                        size: 18,
-                        semanticLabel: 'Quitar $label',
-                        color: palette.paper,
-                      ),
-                    )
-                  else
-                    const SizedBox(width: 6),
+                  if (onRemove != null) ...[
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.close,
+                      size: DesignConstants.filterChipIcon,
+                      semanticLabel: 'Quitar $label',
+                      color: palette.paper,
+                    ),
+                  ],
                 ],
               ),
             ),

@@ -6,6 +6,8 @@ import 'package:marine_app/infrastructure/mappers/species_mapper.dart';
 import 'package:marine_app/infrastructure/models/species_detail_response.dart';
 import 'package:marine_app/infrastructure/models/species_response.dart';
 import 'package:marine_app/infrastructure/models/zones_response.dart';
+import 'package:marine_app/infrastructure/network/rate_limit_interceptor.dart';
+import 'package:marine_app/infrastructure/network/request_limiter.dart';
 
 class SpeciesDatasourcesImpl extends SpeciesDatasource {
   final Dio _dio = Dio(
@@ -15,7 +17,8 @@ class SpeciesDatasourcesImpl extends SpeciesDatasource {
       sendTimeout: ApiConstants.sendTimeout,
       receiveTimeout: ApiConstants.receiveTimeout,
     ),
-  );
+    // Un solo limitador para toda la app: el límite de la API es por cliente, no por Dio
+  )..interceptors.add(RateLimitInterceptor(RequestLimiter.shared));
 
   @override
   Future<(SpeciesPage?, String)> getSpecies({

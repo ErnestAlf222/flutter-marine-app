@@ -61,4 +61,10 @@ class MapConstants {
   // Brillo de los círculos
   static const double glowAlpha = 0.85;
   static const double coreRadiusFactor = 0.32;
+
+  // Hoja de una zona
+  static const String sampleTitle = 'Muestra de especies de esta zona';
+  static const String centerLabel = 'Centro aproximado';
+  static const double shareBarHeight = 6;
+  static const double shareTrackAlpha = 0.15;
 }

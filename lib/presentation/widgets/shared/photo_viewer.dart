@@ -2,36 +2,52 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:marine_app/config/config.dart';
 import 'package:marine_app/presentation/widgets/shared/glass_button.dart';
+import 'package:marine_app/presentation/widgets/shared/glass_surface.dart';
 import 'package:marine_app/presentation/widgets/shared/species_photo.dart';
 
-// Visor a pantalla completa: la foto entera, con zoom de pellizco y arrastre
-class PhotoViewer extends StatelessWidget {
+/// Una foto del visor con su crédito y licencia
+class ViewerPhoto {
   final String url;
-  final String category;
-  // Crédito y licencia de la foto, siempre visibles al pie
   final String? credit;
+
+  const ViewerPhoto({required this.url, this.credit});
+}
+
+// Visor a pantalla completa: galería con deslizamiento horizontal y, en cada foto, zoom de
+// pellizco y arrastre. Mientras una foto está ampliada el deslizamiento se desactiva, para
+// que arrastrar la mueva a ella y no cambie de foto.
+class PhotoViewer extends StatefulWidget {
+  final List<ViewerPhoto> photos;
+  final int initialIndex;
+  final String category;
 
   const PhotoViewer({
     super.key,
-    required this.url,
+    required this.photos,
     required this.category,
-    this.credit,
+    this.initialIndex = 0,
   });
 
   static Future<void> show(
     BuildContext context, {
-    required String url,
+    required List<ViewerPhoto> photos,
     required String category,
-    String? credit,
+    int initialIndex = 0,
   }) {
     return Navigator.of(context).push(
       PageRouteBuilder<void>(
         transitionDuration: MotionConstants.medium,
         reverseTransitionDuration: MotionConstants.short,
-        pageBuilder: (_, _, _) =>
-            PhotoViewer(url: url, category: category, credit: credit),
+        pageBuilder: (_, _, _) => PhotoViewer(
+          photos: photos,
+          category: category,
+          initialIndex: initialIndex,
+        ),
         transitionsBuilder: (_, animation, _, child) => FadeTransition(
-          opacity: CurvedAnimation(parent: animation, curve: MotionConstants.curve),
+          opacity: CurvedAnimation(
+            parent: animation,
+            curve: MotionConstants.curve,
+          ),
           child: child,
         ),
       ),
@@ -39,36 +55,92 @@ class PhotoViewer extends StatelessWidget {
   }
 
   @override
+  State<PhotoViewer> createState() => _PhotoViewerState();
+}
+
+class _PhotoViewerState extends State<PhotoViewer> {
+  late final PageController _pages = PageController(
+    initialPage: widget.initialIndex,
+  );
+  late int _index = widget.initialIndex;
+  bool _zoomed = false;
+
+  @override
+  void dispose() {
+    _pages.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final palette = OceanPalette.of(context);
-    final credit = this.credit;
+    final photos = widget.photos;
+    final credit = photos[_index].credit;
 
     return Scaffold(
       backgroundColor: palette.abyss,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          InteractiveViewer(
-            maxScale: DesignConstants.viewerMaxScale,
-            child: SpeciesPhotoView(
-              url: url,
-              category: category,
-              fit: BoxFit.contain,
-              cacheWidth: DesignConstants.viewerCacheWidth,
+          PageView.builder(
+            controller: _pages,
+            itemCount: photos.length,
+            physics: _zoomed
+                ? const NeverScrollableScrollPhysics()
+                : const PageScrollPhysics(),
+            onPageChanged: (i) => setState(() {
+              _index = i;
+              _zoomed = false;
+            }),
+            itemBuilder: (context, i) => _ZoomablePhoto(
+              photo: photos[i],
+              category: widget.category,
+              onZoomChanged: (zoomed) {
+                if (i == _index && zoomed != _zoomed) {
+                  setState(() => _zoomed = zoomed);
+                }
+              },
             ),
           ),
           Positioned(
             top: 0,
+            left: 0,
             right: 0,
             child: SafeArea(
               bottom: false,
               child: Padding(
                 padding: const EdgeInsets.all(DesignConstants.pagePadding),
-                // Mide 48 dp (glassSize), el mínimo táctil
-                child: GlassButton(
-                  icon: Icons.close,
-                  tooltip: 'Cerrar',
-                  onPressed: () => Navigator.of(context).pop(),
+                child: Row(
+                  children: [
+                    if (photos.length > 1)
+                      GlassSurface(
+                        borderRadius: BorderRadius.circular(
+                          DesignConstants.galleryCounterHeight,
+                        ),
+                        tintAlpha: DesignConstants.glassSolidAlpha,
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        child: SizedBox(
+                          height: DesignConstants.galleryCounterHeight,
+                          child: Center(
+                            child: Text(
+                              DetailConstants.photoCounter(
+                                _index + 1,
+                                photos.length,
+                              ),
+                              style: Theme.of(context).textTheme.labelLarge
+                                  ?.copyWith(color: palette.paper),
+                            ),
+                          ),
+                        ),
+                      ),
+                    const Spacer(),
+                    // Mide 48 dp (glassSize), el mínimo táctil
+                    GlassButton(
+                      icon: Icons.close,
+                      tooltip: 'Cerrar',
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -85,7 +157,9 @@ class PhotoViewer extends StatelessWidget {
                       begin: Alignment.bottomCenter,
                       end: Alignment.topCenter,
                       colors: [
-                        palette.ink.withValues(alpha: DesignConstants.scrimAlpha),
+                        palette.ink.withValues(
+                          alpha: DesignConstants.scrimAlpha,
+                        ),
                         palette.ink.withValues(alpha: 0),
                       ],
                     ),
@@ -93,7 +167,9 @@ class PhotoViewer extends StatelessWidget {
                   child: SafeArea(
                     top: false,
                     child: Padding(
-                      padding: const EdgeInsets.all(DesignConstants.pagePadding),
+                      padding: const EdgeInsets.all(
+                        DesignConstants.pagePadding,
+                      ),
                       child: Text(
                         credit,
                         textAlign: TextAlign.center,
@@ -107,6 +183,64 @@ class PhotoViewer extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+// Una foto con su propio zoom
+class _ZoomablePhoto extends StatefulWidget {
+  final ViewerPhoto photo;
+  final String category;
+  final ValueChanged<bool> onZoomChanged;
+
+  const _ZoomablePhoto({
+    required this.photo,
+    required this.category,
+    required this.onZoomChanged,
+  });
+
+  @override
+  State<_ZoomablePhoto> createState() => _ZoomablePhotoState();
+}
+
+class _ZoomablePhotoState extends State<_ZoomablePhoto> {
+  final _transform = TransformationController();
+  bool _zoomed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _transform.addListener(_onTransform);
+  }
+
+  @override
+  void dispose() {
+    _transform.dispose();
+    super.dispose();
+  }
+
+  void _onTransform() {
+    final zoomed =
+        _transform.value.getMaxScaleOnAxis() >
+        DesignConstants.viewerZoomedAbove;
+    if (zoomed == _zoomed) return;
+    _zoomed = zoomed;
+    widget.onZoomChanged(zoomed);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InteractiveViewer(
+      transformationController: _transform,
+      maxScale: DesignConstants.viewerMaxScale,
+      // Sin zoom, una foto no se arrastra: ese gesto es para pasar a la siguiente
+      panEnabled: _zoomed,
+      child: SpeciesPhotoView(
+        url: widget.photo.url,
+        category: widget.category,
+        fit: BoxFit.contain,
+        cacheWidth: DesignConstants.viewerCacheWidth,
       ),
     );
   }

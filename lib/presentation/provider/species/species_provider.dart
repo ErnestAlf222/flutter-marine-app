@@ -27,10 +27,11 @@ final speciesDetailProvider = FutureProvider.family<SpeciesDetail, String>((
 });
 
 // Trae una página al azar para que cada visita muestre especies distintas
-Future<List<Species>> _randomPage(
+Future<List<Species>> randomSpeciesPage(
   SpeciesRepository repository, {
   required int perPage,
   bool? featured,
+  Random? random,
 }) async {
   // La primera página da el total y sirve de resultado si el azar elige la 1
   final (first, error) = await repository.getSpecies(
@@ -42,7 +43,7 @@ Future<List<Species>> _randomPage(
   if (first == null) throw error;
 
   final pages = (first.total / perPage).ceil();
-  final page = pages <= 1 ? 1 : Random().nextInt(pages) + 1;
+  final page = pages <= 1 ? 1 : (random ?? Random()).nextInt(pages) + 1;
   if (page == 1) return first.items;
 
   final (picked, pickedError) = await repository.getSpecies(
@@ -57,11 +58,23 @@ Future<List<Species>> _randomPage(
 
 // Hay cientos de destacadas (838 al probar): se muestra una página al azar para variar
 final featuredSpeciesProvider = FutureProvider<List<Species>>((ref) {
-  return _randomPage(
+  return randomSpeciesPage(
     ref.watch(speciesRepositoryProvider),
     perPage: ApiConstants.featuredPerPage,
     featured: true,
   );
+});
+
+// Total de especies del catálogo, leído de la paginación (per_page=1): nada escrito a mano
+final catalogTotalProvider = FutureProvider<int>((ref) async {
+  final (page, error) = await ref.watch(speciesRepositoryProvider).getSpecies(
+    lang: ApiConstants.appLang,
+    page: 1,
+    perPage: 1,
+  );
+
+  if (page == null) throw error;
+  return page.total;
 });
 
 // Cuántas especies tiene una colección de Inicio: se lee del total de la paginación
@@ -88,7 +101,7 @@ final collectionCountProvider = FutureProvider.family<int, String>((
 // página al azar es elegir una especie al azar.
 final surpriseSpeciesProvider = Provider<Future<Species> Function()>((ref) {
   return () async {
-    final picked = await _randomPage(
+    final picked = await randomSpeciesPage(
       ref.read(speciesRepositoryProvider),
       perPage: 1,
     );
@@ -104,7 +117,7 @@ final discoverSpeciesProvider = FutureProvider<List<Species>>((ref) async {
   final featured = await ref.watch(featuredSpeciesProvider.future);
   final shown = featured.map((s) => s.slug).toSet();
 
-  final picked = await _randomPage(
+  final picked = await randomSpeciesPage(
     repository,
     perPage: DesignConstants.discoverFetch,
   );

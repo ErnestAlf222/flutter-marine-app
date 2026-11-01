@@ -5,7 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:marine_app/config/config.dart';
-import 'package:marine_app/presentation/widgets/shared/glass_button.dart';
+import 'package:marine_app/presentation/widgets/shared/glass_surface.dart';
 import 'package:marine_app/presentation/widgets/shared/species_photo.dart';
 
 /// Fracción (0 a 1) de la foto que se pierde al recortarla con cover en un marco:
@@ -19,14 +19,33 @@ bool isExtremeCrop({required double imageAspect, required double frameAspect}) =
     photoCropLoss(imageAspect: imageAspect, frameAspect: frameAspect) >
     DesignConstants.maxCropLoss;
 
-/// Foto de la cabecera del Detalle. Entra igual que en las tarjetas (cover, para que el
-/// Hero sea fluido). Solo si el recorte es extremo, y cuando el Hero ya terminó, se
-/// funde a la foto entera sobre ella misma desenfocada. Un botón de vidrio permite
-/// alternar a mano entre llenar el marco y ver la foto entera.
+/// Lo que una foto cuenta a la cabecera sobre su botón de "ver completa / llenar": la
+/// cabecera lo dibuja encima de los textos, así que la foto solo informa y obedece.
+class PhotoFramingController extends ChangeNotifier {
+  // Ya se conoce el tamaño de la foto, así que el botón tiene sentido
+  bool available = false;
+  bool whole = false;
+  VoidCallback? toggle;
+
+  void report({required bool available, required bool whole, required VoidCallback toggle}) {
+    this.toggle = toggle;
+    if (available == this.available && whole == this.whole) return;
+    this.available = available;
+    this.whole = whole;
+    notifyListeners();
+  }
+}
+
+/// Una foto de la cabecera del Detalle. Entra igual que en las tarjetas (cover, para que el
+/// Hero sea fluido). Solo si el recorte es extremo, y cuando el Hero ya terminó, se funde a
+/// la foto entera sobre ella misma desenfocada. El botón para alternar a mano entre llenar
+/// el marco y ver la foto entera lo dibuja la cabecera, que recibe el estado por [framing].
 class DetailPhoto extends StatefulWidget {
   final String? url;
   final String category;
-  final String heroTag;
+  // Solo la primera foto vuela con el Hero; las demás no tienen tarjeta de origen
+  final String? heroTag;
+  final PhotoFramingController? framing;
   // Solo para pruebas: evita la red
   final ImageProvider? provider;
 
@@ -34,7 +53,8 @@ class DetailPhoto extends StatefulWidget {
     super.key,
     required this.url,
     required this.category,
-    required this.heroTag,
+    this.heroTag,
+    this.framing,
     this.provider,
   });
 
@@ -158,18 +178,19 @@ class _DetailPhotoState extends State<DetailPhoto> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final whole = _showWhole(constraints.biggest);
+        _report(whole);
+
+        final photo = SpeciesPhotoView(
+          url: widget.url,
+          category: widget.category,
+          cacheWidth: DesignConstants.heroPhotoCacheWidth,
+        );
+        final tag = widget.heroTag;
 
         return Stack(
           fit: StackFit.expand,
           children: [
-            Hero(
-              tag: widget.heroTag,
-              child: SpeciesPhotoView(
-                url: widget.url,
-                category: widget.category,
-                cacheWidth: DesignConstants.heroPhotoCacheWidth,
-              ),
-            ),
+            if (tag != null) Hero(tag: tag, child: photo) else photo,
             // Fundido corto entre llenar el marco y ver la foto entera
             AnimatedSwitcher(
               duration: animate ? MotionConstants.short : Duration.zero,
@@ -178,20 +199,26 @@ class _DetailPhotoState extends State<DetailPhoto> {
                   ? _WholePhoto(key: const ValueKey('whole'), provider: _provider!)
                   : const SizedBox.shrink(key: ValueKey('fill')),
             ),
-            if (_imageSize != null)
-              Positioned(
-                right: DesignConstants.pagePadding,
-                bottom: 24,
-                child: GlassButton(
-                  icon: whole ? Icons.crop : Icons.fit_screen,
-                  tooltip: whole ? 'Llenar el marco' : 'Ver la foto entera',
-                  onPressed: () => setState(() => _whole = !whole),
-                ),
-              ),
           ],
         );
       },
     );
+  }
+
+  // No se puede avisar durante el build: se hace al terminar el cuadro
+  void _report(bool whole) {
+    final framing = widget.framing;
+    if (framing == null) return;
+
+    final available = _imageSize != null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      framing.report(
+        available: available,
+        whole: whole,
+        toggle: () => setState(() => _whole = !whole),
+      );
+    });
   }
 }
 
@@ -223,9 +250,69 @@ class _WholePhoto extends StatelessWidget {
             ),
           ),
         ),
-        ColoredBox(color: palette.ink.withValues(alpha: DesignConstants.backdropDim)),
+        ColoredBox(color: palette.ink.withValues(alpha: DesignConstants.detailBackdropDim)),
         Image(image: provider, fit: BoxFit.contain),
       ],
+    );
+  }
+}
+
+/// Píldora de cristal casi sólido, como la burbuja de filtros: icono y etiqueta corta
+class PhotoToggleButton extends StatelessWidget {
+  final bool whole;
+  final VoidCallback onPressed;
+
+  const PhotoToggleButton({super.key, required this.whole, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = OceanPalette.of(context);
+    final accent = Theme.of(context).colorScheme.primary;
+
+    return Tooltip(
+      message: whole
+          ? DetailConstants.fillFrameTooltip
+          : DetailConstants.showWholeTooltip,
+      child: GlassSurface(
+        borderRadius: BorderRadius.circular(DesignConstants.photoToggleHeight / 2),
+        tintAlpha: DesignConstants.glassSolidAlpha,
+        borderColor: accent,
+        borderAlpha: DesignConstants.bubbleBorderAlpha,
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: onPressed,
+            child: SizedBox(
+              height: DesignConstants.photoToggleHeight,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      whole ? Icons.crop : Icons.fit_screen,
+                      size: DesignConstants.photoToggleIcon,
+                      color: palette.paper,
+                    ),
+                    const SizedBox(width: DesignConstants.photoToggleGap),
+                    // Flexible: con letra muy grande la etiqueta se recorta en vez de desbordar
+                    Flexible(
+                      child: Text(
+                        whole ? DetailConstants.fillFrame : DetailConstants.showWhole,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: palette.paper,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

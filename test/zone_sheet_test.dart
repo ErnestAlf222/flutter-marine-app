@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -22,8 +25,86 @@ const _zone = OceanZone(
 
 class _Repository extends FakeUiRepository {
   final bool topFails;
+  // Con true, los detalles responden: las especies pares viven en la zona de la prueba
+  final bool detailsOk;
+  final bool totalFails;
+  // Con gated, cada detalle espera a que la prueba lo libere (para ver el avance paso a paso)
+  final bool gated;
+  final gates = <String, Completer<void>>{};
+  int detailCalls = 0;
+  int running = 0;
+  int maxRunning = 0;
 
-  _Repository({this.topFails = true});
+  void release(String slug) {
+    final gate = gates[slug] ??= Completer<void>();
+    if (!gate.isCompleted) gate.complete();
+  }
+
+  _Repository({
+    this.topFails = true,
+    this.detailsOk = false,
+    this.totalFails = false,
+    this.gated = false,
+    super.count,
+  });
+
+  @override
+  Future<(SpeciesPage?, String)> getSpecies({
+    required String lang,
+    required int page,
+    required int perPage,
+    String? zone,
+    String? category,
+    String? conservationStatus,
+    String? dangerLevel,
+    double? sizeMin,
+    double? sizeMax,
+    double? depthMin,
+    double? depthMax,
+    bool? featured,
+  }) async {
+    // El total de todo el catálogo se lee con per_page=1
+    if (perPage == 1) {
+      if (totalFails) return (null, 'Sin total.');
+      return (SpeciesPage(items: const [], page: 1, perPage: 1, total: 1505), '');
+    }
+    return super.getSpecies(
+      lang: lang,
+      page: page,
+      perPage: perPage,
+      featured: featured,
+    );
+  }
+
+  @override
+  Future<(SpeciesDetail?, String)> getSpeciesBySlug({
+    required String slug,
+    required String lang,
+  }) async {
+    detailCalls++;
+    running++;
+    if (running > maxRunning) maxRunning = running;
+    if (gated) {
+      await (gates[slug] ??= Completer<void>()).future;
+    } else {
+      await Future<void>.delayed(Duration.zero);
+    }
+    running--;
+    if (!detailsOk) return (null, 'Sin detalle.');
+
+    final n = int.parse(slug.split('-').last);
+    return (
+      SpeciesDetail(
+        id: 'id-$n',
+        slug: slug,
+        scientificName: 'Species $n',
+        commonName: 'Especie $n',
+        category: 'fish',
+        zones: [n.isEven ? _zone.id : 'caribbean'],
+      ),
+      '',
+    );
+  }
 
   @override
   Future<(List<Species>?, String)> getZoneTopSpecies({
@@ -37,7 +118,12 @@ class _Repository extends FakeUiRepository {
 
 const _screen = Size(360, 800);
 
-Future<void> _pump(WidgetTester tester, {bool topFails = true}) async {
+Future<void> _pump(
+  WidgetTester tester, {
+  bool topFails = true,
+  bool detailsOk = false,
+  _Repository? repository,
+}) async {
   tester.view.physicalSize = _screen * 3;
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
@@ -47,7 +133,7 @@ Future<void> _pump(WidgetTester tester, {bool topFails = true}) async {
       retry: (_, _) => null,
       overrides: [
         speciesRepositoryProvider.overrideWithValue(
-          _Repository(topFails: topFails),
+          repository ?? _Repository(topFails: topFails, detailsOk: detailsOk),
         ),
         zonesProvider.overrideWith((ref) async => [_zone]),
       ],
@@ -74,6 +160,19 @@ Future<void> _openZone(WidgetTester tester) async {
 Future<void> _drain(WidgetTester tester) async {
   await tester.pumpWidget(const SizedBox.shrink());
   await tester.pump(const Duration(seconds: 2));
+}
+
+// La hoja enriquecida deja las especies más abajo: se sube para verlas
+Future<void> _expandSheet(WidgetTester tester, {bool animating = false}) async {
+  await tester.drag(find.byType(DraggableScrollableSheet), const Offset(0, -700));
+  if (animating) {
+    // El pez anima sin parar: pumpAndSettle nunca terminaría
+    await tester.pump();
+    await tester.pump(MotionConstants.long);
+    await tester.pump(MotionConstants.long);
+  } else {
+    await tester.pumpAndSettle();
+  }
 }
 
 Rect _mapRect(WidgetTester tester) => tester.getRect(find.byType(OceanMap));
@@ -137,6 +236,87 @@ void main() {
         );
       },
     );
+  });
+
+  group('muestra desde los detalles', () {
+    test('para al juntar 8, con 4 detalles a la vez como máximo', () async {
+      final repository = _Repository(detailsOk: true, count: 100);
+      // Todas las pares coinciden: la mitad de 100
+      final found = (await sampleZoneSpecies(repository, _zone.id, random: Random(1)).last).items;
+
+      expect(found, hasLength(ApiConstants.zoneSampleSize));
+      expect(repository.maxRunning, lessThanOrEqualTo(ApiConstants.zoneSampleConcurrency));
+      expect(repository.detailCalls, lessThanOrEqualTo(ApiConstants.zoneSampleMaxDetails));
+    });
+
+    test('nunca pide más de 24 detalles por zona', () async {
+      // Ninguna coincide: se agota el tope
+      final repository = _Repository(detailsOk: true, count: 100);
+      final found = (await sampleZoneSpecies(repository, 'zona-inexistente', random: Random(2)).last).items;
+
+      expect(found, isEmpty);
+      expect(repository.detailCalls, ApiConstants.zoneSampleMaxDetails);
+    });
+
+    test('si los detalles fallan se deja de insistir tras 4 fallos', () async {
+      final repository = _Repository(count: 100);
+      final found = (await sampleZoneSpecies(repository, _zone.id, random: Random(3)).last).items;
+
+      expect(found, isEmpty);
+      // Los trabajadores que ya tenían un detalle en vuelo terminan: como mucho 3 de más
+      expect(repository.detailCalls, greaterThanOrEqualTo(ApiConstants.zoneSampleMaxFailures));
+      expect(
+        repository.detailCalls,
+        lessThan(ApiConstants.zoneSampleMaxFailures + ApiConstants.zoneSampleConcurrency),
+      );
+    });
+
+    test('progresiva: cada coincidencia se emite en cuanto llega y done solo al final', () async {
+      // 6 especies; las pares (2, 4, 6) viven en la zona. 4 detalles a la vez
+      final repository = _Repository(detailsOk: true, gated: true, count: 6);
+      final emissions = <ZoneSample>[];
+      final done = Completer<void>();
+      sampleZoneSpecies(repository, _zone.id, random: Random(5)).listen(
+        emissions.add,
+        onDone: done.complete,
+      );
+      Future<void> settle() => Future<void>.delayed(const Duration(milliseconds: 20));
+      await settle();
+
+      // Arranca ya, sin resultados y sin terminar (la hoja muestra el pez)
+      expect(emissions.last.items, isEmpty);
+      expect(emissions.last.done, isFalse);
+
+      // Una impar llega: no coincide, no cambia nada
+      repository.release('especie-1');
+      await settle();
+      expect(emissions.last.items, isEmpty);
+
+      // Una par llega: aparece al instante, aunque falten detalles
+      repository.release('especie-2');
+      await settle();
+      expect(emissions.last.items.map((s) => s.slug), ['especie-2']);
+      expect(emissions.last.done, isFalse);
+
+      repository.release('especie-4');
+      await settle();
+      expect(emissions.last.items.map((s) => s.slug).toSet(), {'especie-2', 'especie-4'});
+      expect(emissions.last.done, isFalse);
+
+      for (final n in [3, 5, 6]) {
+        repository.release('especie-$n');
+      }
+      await done.future;
+      expect(emissions.last.items, hasLength(3));
+      expect(emissions.last.done, isTrue);
+      // Antes del final nunca hubo done
+      expect(emissions.where((e) => e.done), hasLength(1));
+    });
+
+    test('las coordenadas se escriben en español', () {
+      expect(CoordinateUtils.format(28.5, -16), '28.5° N, 16.0° O');
+      expect(CoordinateUtils.format(-5, 135), '5.0° S, 135.0° E');
+    });
   });
 
   group('hoja de zona', () {
@@ -248,8 +428,10 @@ void main() {
       (tester) async {
         await _pump(tester);
         await _openZone(tester);
+        await _expandSheet(tester);
 
         expect(find.text('ESPECIES DESTACADAS'), findsNothing);
+        expect(find.text(MapConstants.sampleTitle.toUpperCase()), findsNothing);
         final note = find.text('Destacadas no disponibles.');
         expect(note, findsOneWidget);
         expect(find.text('Reintentar'), findsOneWidget);
@@ -262,10 +444,95 @@ void main() {
     testWidgets('con especies muestra el encabezado y las fichas', (
       tester,
     ) async {
-      await _pump(tester, topFails: false);
+      final repository = _Repository(topFails: false, detailsOk: true);
+      await _pump(tester, repository: repository);
       await _openZone(tester);
+      await _expandSheet(tester);
 
       expect(find.text('ESPECIES DESTACADAS'), findsOneWidget);
+      // Si top-species responde no se arma la muestra: ni una petición de detalle
+      expect(repository.detailCalls, 0);
+      expect(find.text(MapConstants.sampleTitle.toUpperCase()), findsNothing);
+      expect(find.byType(SpeciesTile), findsWidgets);
+      await _drain(tester);
+    });
+
+    testWidgets('la hoja trae descripción completa, proporción del catálogo y coordenadas', (
+      tester,
+    ) async {
+      await _pump(tester);
+      await _openZone(tester);
+      await _expandSheet(tester);
+
+      expect(find.text(_zone.description), findsOneWidget);
+      // El total sale de /species (1505 en la prueba), no de un número escrito a mano
+      expect(find.text('100 de 1,505 especies'), findsOneWidget);
+      expect(
+        find.text('${MapConstants.centerLabel}: 35.0° N, 18.0° E'),
+        findsOneWidget,
+      );
+      await _drain(tester);
+    });
+
+    testWidgets('si falla el total del catálogo, la hoja sigue completa sin la barra', (
+      tester,
+    ) async {
+      await _pump(tester, repository: _Repository(totalFails: true));
+      await _openZone(tester);
+      await _expandSheet(tester);
+
+      expect(find.textContaining('100 de '), findsNothing);
+      expect(find.text(_zone.description), findsOneWidget);
+      expect(find.textContaining(MapConstants.centerLabel), findsOneWidget);
+      await _drain(tester);
+    });
+
+    testWidgets('con top-species caído, la muestra sale de los detalles', (tester) async {
+      final repository = _Repository(detailsOk: true);
+      await _pump(tester, repository: repository);
+      await _openZone(tester);
+      await _expandSheet(tester);
+
+      expect(find.text(MapConstants.sampleTitle.toUpperCase()), findsOneWidget);
+      expect(find.text('ESPECIES DESTACADAS'), findsNothing);
+      // Solo las pares (3 de 6) viven en la zona; se piden los 6 detalles
+      expect(find.byType(SpeciesTile), findsWidgets);
+      expect(repository.detailCalls, 6);
+      await _drain(tester);
+    });
+
+    testWidgets('la muestra aparece poco a poco y el pez sigue hasta el final', (tester) async {
+      final repository = _Repository(detailsOk: true, gated: true, count: 6);
+      await _pump(tester, repository: repository);
+      await _openZone(tester);
+      await _expandSheet(tester, animating: true);
+
+      // Sin nada todavía: el pez y ninguna ficha
+      expect(find.text(MapConstants.sampleTitle.toUpperCase()), findsOneWidget);
+      expect(find.byType(FishLoader), findsOneWidget);
+      expect(find.byType(SpeciesTile), findsNothing);
+
+      // Llega una coincidencia: su ficha aparece y el pez sigue. Solo 4 detalles van a la vez,
+      // así que se libera una par de las que ya arrancaron (entre 4 de 6 siempre hay una)
+      final first = repository.gates.keys.firstWhere(
+        (slug) => int.parse(slug.split('-').last).isEven,
+      );
+      repository.release(first);
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.byType(SpeciesTile), findsOneWidget);
+      expect(find.byType(FishLoader), findsOneWidget);
+
+      // Terminan todos los detalles: el pez se va
+      // Los que faltan arrancan según se liberan: se sueltan en rondas
+      for (var round = 0; round < 3; round++) {
+        for (var n = 1; n <= 6; n++) {
+          if (n.toString() != first.split('-').last) repository.release('especie-$n');
+        }
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.byType(FishLoader), findsNothing);
       expect(find.byType(SpeciesTile), findsWidgets);
       await _drain(tester);
     });

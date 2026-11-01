@@ -26,6 +26,24 @@ class DesignConstants {
   // Detalle: la foto ocupa más de la mitad y el degradado cubre el bloque de nombres
   static const double detailHeaderFraction = 0.62;
   static const double detailScrimSolid = 0.3;
+  // El degradado termina antes que el del héroe: la zona del animal queda sin oscurecer
+  static const double detailScrimCoverage = 0.55;
+  // Fondo borroso del modo "foto entera": más claro que el del héroe de Inicio
+  static const double detailBackdropDim = 0.3;
+  // Botón "Ver completa / Llenar": alto táctil, icono y separación entre icono y texto
+  static const double photoToggleHeight = 48;
+  static const double photoToggleIcon = 24;
+  static const double photoToggleGap = 8;
+  static const double photoToggleBottom = 24;
+  // Galería del Detalle: puntos indicadores arriba y contador "1/3" en cristal
+  static const double galleryDot = 8;
+  static const double galleryDotGap = 6;
+  static const double galleryCounterHeight = 32;
+  // Distancia de los puntos al borde superior, por debajo de los botones de arriba
+  static const double galleryDotsTop = 36;
+
+  // Columna de etiquetas de la clasificación (Reino, Filo...)
+  static const double taxonomyLabelWidth = 80;
 
   // Burbuja de filtros: círculo de 56 dp que se pega a un borde y, sin uso, se
   // minimiza a una pestaña de 24 dp de ancho
@@ -49,6 +67,8 @@ class DesignConstants {
   // Visor de foto a pantalla completa: se decodifica más grande para poder acercar
   static const int viewerCacheWidth = 2000;
   static const double viewerMaxScale = 5;
+  // Desde esta escala una foto cuenta como ampliada y el deslizamiento entre fotos se apaga
+  static const double viewerZoomedAbove = 1.01;
 
   // Corazón de favorito (círculo e icono): 48/30 dp en las tarjetas y 56/34 dp en el
   // héroe de Inicio y el Detalle. Ninguno baja del mínimo táctil de 48 dp
@@ -60,9 +80,6 @@ class DesignConstants {
   static const double favoriteTileIcon = 30;
   static const double favoriteLargeSize = 56;
   static const double favoriteLargeIcon = 34;
-
-  // Botón del crédito: más pequeño que el resto de botones de vidrio
-  static const double creditButtonSize = 40;
 
   // Fondo borroso del héroe
   static const double backdropBlur = 28;
@@ -96,6 +113,14 @@ class DesignConstants {
   static const double filterLabelSize = 16;
   static const double filterValueSize = 15;
   static const double filterArrowSize = 28;
+
+  // Filtros activos bajo el buscador: fila compacta, cuántos chips se ven antes del "+N"
+  static const int filterChipsShown = 2;
+  static const double filterChipHeight = 32;
+  static const double filterChipGap = 8;
+  static const double filterChipPad = 12;
+  static const double filterChipDot = 10;
+  static const double filterChipIcon = 16;
 
   // Espacio al final de las listas para que el botón flotante no tape la última fila
   static const double fabClearance = 96;

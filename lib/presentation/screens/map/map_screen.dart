@@ -265,16 +265,18 @@ class _ZoneRow extends StatelessWidget {
   }
 }
 
-// Hoja de una zona: siempre nombre, descripción y conteo; las destacadas se
-// intentan cargar aparte porque el servidor falla con la mayoría de las zonas
-class _ZoneSheet extends StatelessWidget {
+// Hoja de una zona: siempre nombre, descripción, conteo, proporción del catálogo y
+// coordenadas; las destacadas se intentan cargar aparte porque el servidor falla con la
+// mayoría de las zonas
+class _ZoneSheet extends ConsumerWidget {
   final OceanZone zone;
   final ScrollController scroll;
 
   const _ZoneSheet({required this.zone, required this.scroll});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final total = ref.watch(catalogTotalProvider).asData?.value;
     final palette = OceanPalette.of(context);
     final textTheme = Theme.of(context).textTheme;
     final color = palette.zoneColor(zone.id);
@@ -328,8 +330,91 @@ class _ZoneSheet extends StatelessWidget {
             ),
           ),
         ],
+        // Si el total del catálogo no llega, la hoja sigue completa sin la proporción
+        if (total != null && total > 0) ...[
+          const SizedBox(height: 16),
+          _CatalogShare(zone: zone, total: total, color: color),
+        ],
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Icon(
+              Icons.place_outlined,
+              size: 18,
+              color: palette.paper.withValues(alpha: 0.7),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '${MapConstants.centerLabel}: ${CoordinateUtils.format(zone.lat, zone.lon)}',
+                style: textTheme.bodySmall?.copyWith(
+                  color: palette.paper.withValues(alpha: 0.8),
+                ),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 16),
         _TopSpecies(zoneId: zone.id),
+      ],
+    );
+  }
+}
+
+// "535 de 1,505 especies" con una barra pequeña de la proporción
+class _CatalogShare extends StatelessWidget {
+  final OceanZone zone;
+  final int total;
+  final Color color;
+
+  const _CatalogShare({
+    required this.zone,
+    required this.total,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = OceanPalette.of(context);
+    final fraction = (zone.speciesCount / total).clamp(0.0, 1.0);
+    final animate = !MediaQuery.disableAnimationsOf(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${formatSpeciesCount(zone.speciesCount)} de ${formatSpeciesCount(total)} especies',
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            color: palette.paper,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: animate ? 0 : fraction, end: fraction),
+            duration: animate ? MotionConstants.long : Duration.zero,
+            curve: MotionConstants.curve,
+            builder: (context, value, _) => Stack(
+              children: [
+                SizedBox(
+                  height: MapConstants.shareBarHeight,
+                  width: double.infinity,
+                  child: ColoredBox(
+                    color: palette.paper.withValues(alpha: MapConstants.shareTrackAlpha),
+                  ),
+                ),
+                FractionallySizedBox(
+                  widthFactor: value,
+                  child: SizedBox(
+                    height: MapConstants.shareBarHeight,
+                    child: ColoredBox(color: color),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -351,6 +436,7 @@ class _TopSpeciesState extends ConsumerState<_TopSpecies> {
   void _retry() {
     setState(() => _retried = true);
     ref.invalidate(zoneTopSpeciesProvider(widget.zoneId));
+    ref.invalidate(zoneSampleProvider(widget.zoneId));
   }
 
   @override
@@ -419,11 +505,11 @@ class _TopSpeciesState extends ConsumerState<_TopSpecies> {
           );
 
     // Con las especies, un encabezado y sus fichas; cuando faltan, una sola línea
-    Widget section(Widget content) => Column(
+    Widget section(Widget content, {String title = 'ESPECIES DESTACADAS'}) => Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'ESPECIES DESTACADAS',
+          title,
           style: textTheme.overline.copyWith(
             color: Theme.of(context).colorScheme.primary,
           ),
@@ -433,34 +519,83 @@ class _TopSpeciesState extends ConsumerState<_TopSpecies> {
       ],
     );
 
-    return species.whenRetry(
-      loading: () => section(loading()),
-      error: (_, _) => _retried
-          ? note(ApiConstants.zoneRetryFailedMessage)
-          : note('Destacadas no disponibles.', onRetry: _retry, oneLine: true),
-      data: (items) => items.isEmpty
-          ? note('Esta zona aún no tiene especies destacadas.')
-          : section(
-              SizedBox(
-                height: DesignConstants.zoneTileHeight,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: items.length,
-                  separatorBuilder: (_, _) =>
-                      const SizedBox(width: DesignConstants.gridGap),
-                  itemBuilder: (context, index) => SizedBox(
-                    width: DesignConstants.zoneTileWidth,
-                    child: SpeciesTile(
-                      species: items[index],
-                      aspectRatio:
-                          DesignConstants.zoneTileWidth /
-                          DesignConstants.zoneTileHeight,
-                      onTap: () => openSpecies(context, items[index]),
-                    ),
+    Widget unavailable() => _retried
+        ? note(ApiConstants.zoneRetryFailedMessage)
+        : note('Destacadas no disponibles.', onRetry: _retry, oneLine: true);
+
+    // [loading]: faltan detalles por procesar, el pez sigue al final de la fila
+    Widget tiles(
+      List<Species> items, {
+      String title = 'ESPECIES DESTACADAS',
+      bool loading = false,
+    }) => section(
+      SizedBox(
+        height: DesignConstants.zoneTileHeight,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: items.length + (loading ? 1 : 0),
+          separatorBuilder: (_, _) =>
+              const SizedBox(width: DesignConstants.gridGap),
+          itemBuilder: (context, index) => index == items.length
+              ? const SizedBox(
+                  width: DesignConstants.zoneTileWidth / 2,
+                  child: Center(child: FishLoader()),
+                )
+              : SizedBox(
+                  width: DesignConstants.zoneTileWidth,
+                  child: SpeciesTile(
+                    species: items[index],
+                    aspectRatio:
+                        DesignConstants.zoneTileWidth /
+                        DesignConstants.zoneTileHeight,
+                    onTap: () => openSpecies(context, items[index]),
                   ),
                 ),
-              ),
-            ),
+        ),
+      ),
+      title: title,
+    );
+
+    // top-species falla en casi todas las zonas: en su lugar se arma una muestra desde los
+    // detalles. Si tampoco hay muestra, queda la nota de siempre
+    Widget fallback() {
+      final sample = ref.watch(zoneSampleProvider(zoneId));
+      final sampleTitle = MapConstants.sampleTitle.toUpperCase();
+
+      return sample.when(
+        skipLoadingOnReload: true,
+        loading: () => section(
+          const SizedBox(
+            height: DesignConstants.zoneTileHeight,
+            child: Center(child: FishLoader()),
+          ),
+          title: sampleTitle,
+        ),
+        error: (_, _) => unavailable(),
+        data: (state) {
+          if (state.items.isEmpty) {
+            // Sin coincidencias aún: el pez; sin coincidencias y ya terminó: la nota
+            return state.done
+                ? unavailable()
+                : section(
+                    const SizedBox(
+                      height: DesignConstants.zoneTileHeight,
+                      child: Center(child: FishLoader()),
+                    ),
+                    title: sampleTitle,
+                  );
+          }
+          return tiles(state.items, title: sampleTitle, loading: !state.done);
+        },
+      );
+    }
+
+    return species.whenRetry(
+      loading: () => section(loading()),
+      error: (_, _) => fallback(),
+      data: (items) => items.isEmpty
+          ? note('Esta zona aún no tiene especies destacadas.')
+          : tiles(items),
     );
   }
 }

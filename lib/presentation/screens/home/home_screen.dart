@@ -128,23 +128,11 @@ class _HomeViewState extends ConsumerState<HomeView> {
               header: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Text(
-                        AppConstants.appName,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: palette.paper,
-                        ),
-                      ),
-                      const Spacer(),
-                      // Créditos y licencias, que antes vivían en la pestaña Acerca de
-                      GlassButton(
-                        icon: Icons.info_outline,
-                        size: DesignConstants.creditButtonSize,
-                        tooltip: 'Créditos',
-                        onPressed: () => showCreditsSheet(context),
-                      ),
-                    ],
+                  Text(
+                    AppConstants.appName,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: palette.paper,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   SpeciesSearchField(

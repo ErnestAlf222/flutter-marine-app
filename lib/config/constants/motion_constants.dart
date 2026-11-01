@@ -49,4 +49,24 @@ class MotionConstants {
 
   // Desplazamiento vertical inicial de la entrada escalonada (fracción del alto)
   static const double enterSlide = 0.08;
+
+  // Salir del Detalle: la pantalla se encoge a esta escala mientras se desvanece y el fondo
+  // se oscurece hasta este alfa
+  static const double minimizeScale = 0.85;
+  static const double minimizeDim = 0.6;
+
+  // Arrastrar hacia abajo para cerrar el Detalle: el recorrido completo es esta fracción del
+  // alto de pantalla; a ese recorrido la escala llega a pullMinScale. Se cierra al soltar
+  // pasado el umbral (fracción del recorrido) o con un tirón rápido (px/s); si no, vuelve
+  // con un resorte
+  static const double pullMinScale = 0.85;
+  static const double pullRange = 0.4;
+  static const double pullDismissAt = 0.3;
+  static const double pullFlingVelocity = 700;
+  static const double pullSlop = 8;
+  static const double pullSpringStiffness = 300;
+  static const double pullSpringDamping = 0.7;
+
+  // Aviso "Desliza para ver más fotos": cuánto se queda antes de desvanecerse
+  static const Duration galleryHint = Duration(seconds: 3);
 }

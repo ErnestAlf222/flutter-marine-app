@@ -16,6 +16,7 @@ class SpeciesResponse {
   final String? shortDescription;
   final String? primaryPhoto;
   final bool featured;
+  final String? updatedAt;
 
   SpeciesResponse({
     required this.id,
@@ -34,6 +35,7 @@ class SpeciesResponse {
     required this.shortDescription,
     required this.primaryPhoto,
     required this.featured,
+    this.updatedAt,
   });
 
   factory SpeciesResponse.fromJson(Map<String, dynamic> json) {
@@ -57,6 +59,7 @@ class SpeciesResponse {
       shortDescription: json['short_description'] as String?,
       primaryPhoto: json['primary_photo'] as String?,
       featured: json['featured'] as bool? ?? false,
+      updatedAt: json['updated_at'] as String?,
     );
   }
 }
