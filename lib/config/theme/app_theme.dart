@@ -12,8 +12,11 @@ class OceanPalette extends ThemeExtension<OceanPalette> {
   final Color deep;
   final Color abyss;
 
-  // Solo para favorito y peligro
+  // Solo para peligro (el favorito tiene su propio color)
   final Color coral;
+
+  // Corazón marcado y sus burbujas: un rojo franco, aparte del coral de peligro
+  final Color favorite;
 
   // Texto sobre fondos oscuros y claros
   final Color paper;
@@ -34,6 +37,7 @@ class OceanPalette extends ThemeExtension<OceanPalette> {
     required this.deep,
     required this.abyss,
     required this.coral,
+    required this.favorite,
     required this.paper,
     required this.ink,
     required this.uicn,
@@ -52,6 +56,9 @@ class OceanPalette extends ThemeExtension<OceanPalette> {
     deep: Color(0xFF0B3256),
     abyss: Color(0xFF050E1F),
     coral: Color(0xFFFF6B5E),
+    // Rojo vivo: 3.5:1 sobre el círculo de cristal del corazón con una foto blanca detrás
+    // (5.4:1 con una negra). Queda cerca del rojo UICN de CR, pero son contextos distintos
+    favorite: Color(0xFFFF3B3B),
     paper: Color(0xFFFFFFFF),
     ink: Color(0xFF06121F),
     uicn: {
@@ -121,12 +128,13 @@ class OceanPalette extends ThemeExtension<OceanPalette> {
   }
 
   @override
-  OceanPalette copyWith({Color? coral}) => OceanPalette(
+  OceanPalette copyWith({Color? coral, Color? favorite}) => OceanPalette(
     surface: surface,
     reef: reef,
     deep: deep,
     abyss: abyss,
     coral: coral ?? this.coral,
+    favorite: favorite ?? this.favorite,
     paper: paper,
     ink: ink,
     uicn: uicn,
@@ -157,7 +165,7 @@ extension OceanTextStyles on TextTheme {
 
 class AppTheme {
   // Verde azulado de los mockups; único lugar donde vive el color semilla
-  static const Color _seedColor = Color(0xFF2FD3C6);
+  static const Color seedColor = Color(0xFF2FD3C6);
 
   final Brightness brightness;
 
@@ -167,7 +175,7 @@ class AppTheme {
   ThemeData getTheme() {
     const palette = OceanPalette.dark;
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: _seedColor,
+      seedColor: seedColor,
       brightness: brightness,
     ).copyWith(surface: palette.abyss);
     final base = ThemeData(useMaterial3: true, colorScheme: colorScheme);

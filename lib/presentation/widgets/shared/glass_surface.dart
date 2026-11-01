@@ -19,6 +19,8 @@ class GlassSurface extends StatelessWidget {
   final Color? tint;
   // Opacidad del borde; sube cuando el cristal debe destacar sobre un fondo oscuro
   final double borderAlpha;
+  // Color del borde; por defecto el papel. Un acento lo hace visible sobre fondos negros
+  final Color? borderColor;
 
   const GlassSurface({
     super.key,
@@ -31,6 +33,7 @@ class GlassSurface extends StatelessWidget {
     this.tintAlpha = DesignConstants.glassAlpha,
     this.tint,
     this.borderAlpha = DesignConstants.glassBorderAlpha,
+    this.borderColor,
   });
 
   @override
@@ -51,7 +54,7 @@ class GlassSurface extends StatelessWidget {
         ],
       ),
       border: Border.all(
-        color: palette.paper.withValues(alpha: borderAlpha),
+        color: (borderColor ?? palette.paper).withValues(alpha: borderAlpha),
         width: DesignConstants.glassBorderWidth,
       ),
     );

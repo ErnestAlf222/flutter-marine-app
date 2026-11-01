@@ -105,11 +105,12 @@ class TraitConstants {
     'venomous': 'Venenosa',
   };
 
-  // Qué significa cada nivel para quien bucea o pisa la orilla
+  // La API no define qué significan exactamente estos niveles, así que se presentan como
+  // su clasificación y no como una instrucción de seguridad
   static const Map<String, String> dangerPhrases = {
-    'harmless': 'No representa un peligro conocido para las personas.',
-    'caution': 'Puede lastimar si se la molesta o se la toca: conviene observarla de lejos.',
-    'venomous': 'Tiene veneno que puede dañar a las personas: no se debe tocar.',
+    'harmless': 'Según speCies.blue, es inofensiva. Aun así, observa sin tocar.',
+    'caution': 'Según speCies.blue, requiere precaución. Observa sin tocar.',
+    'venomous': 'Según speCies.blue, es venenosa. Observa sin tocar.',
   };
 
   // Niveles que merecen el color de alerta; el resto se muestra neutro

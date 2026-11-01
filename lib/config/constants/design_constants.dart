@@ -76,14 +76,26 @@ class DesignConstants {
   static const double glassBorderAlpha = 0.18;
   static const double glassBorderWidth = 1;
   static const double glassLightAlpha = 0.14;
-  // Hojas y chips grandes llevan más tinte para que el texto siga legible
-  static const double glassSheetAlpha = 0.55;
+  // Hojas, chips y burbuja con texto encima: tinte oscuro casi sólido, porque el desenfoque
+  // de una foto blanca detrás no basta para que el texto llegue a 4.5:1
+  static const double glassSolidAlpha = 0.85;
+  // Texto atenuado sobre ese cristal ("Cualquiera"): sigue llegando a 4.5:1
+  static const double glassMutedTextAlpha = 0.75;
+  // Borde de acento de la burbuja: con el tinte oscuro es lo que la separa de un fondo negro
+  static const double bubbleBorderAlpha = 0.9;
 
   // Cabecera de Inicio sobre el héroe: nombre (~28) + espacio + buscador (56) + márgenes
   static const double homeHeaderHeight = 132;
 
-  // Hoja de filtros de Explorar: fracción del alto de pantalla que ocupa
-  static const double filterSheetHeightFraction = 0.85;
+  // Hoja de filtros de Explorar: se ajusta al contenido y, si no cabe, llega a esta
+  // fracción del alto de pantalla y se desplaza
+  static const double filterSheetMaxFraction = 0.9;
+  static const double filterRowHeight = 56;
+  static const double filterOptionHeight = 48;
+  static const double filterButtonHeight = 52;
+  static const double filterLabelSize = 16;
+  static const double filterValueSize = 15;
+  static const double filterArrowSize = 28;
 
   // Espacio al final de las listas para que el botón flotante no tape la última fila
   static const double fabClearance = 96;

@@ -20,15 +20,16 @@ class DepthGauge extends StatelessWidget {
       .firstWhere((s) => s >= deepest, orElse: () => deepest);
 
   // Nombre del extremo y su medida debajo
-  static Widget _end(TextTheme textTheme, OceanPalette palette, String name, String value) {
+  static Widget _end(TextTheme textTheme, OceanPalette palette, String name, {String? value}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(name, style: textTheme.labelMedium?.copyWith(color: palette.paper)),
-        Text(
-          value,
-          style: textTheme.labelSmall?.copyWith(color: palette.paper.withValues(alpha: 0.75)),
-        ),
+        if (value != null)
+          Text(
+            value,
+            style: textTheme.labelSmall?.copyWith(color: palette.paper.withValues(alpha: 0.75)),
+          ),
       ],
     );
   }
@@ -52,7 +53,7 @@ class DepthGauge extends StatelessWidget {
     final animate = !MediaQuery.disableAnimationsOf(context);
 
     return Semantics(
-      label: 'Profundidad, entre qué profundidades se le encuentra: $rangeText. De la superficie al fondo, escala hasta ${_fmt(scaleMax)} metros',
+      label: 'Profundidad, entre qué profundidades se le encuentra: $rangeText. De la superficie hasta ${_fmt(scaleMax)} metros',
       child: ExcludeSemantics(
         child: DecoratedBox(
           decoration: BoxDecoration(
@@ -118,13 +119,12 @@ class DepthGauge extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _end(textTheme, palette, MeasureConstants.surfaceLabel, '0 m'),
+                      _end(textTheme, palette, MeasureConstants.surfaceLabel, value: '0 m'),
                       Icon(Icons.arrow_downward, size: 20, color: accent),
                       _end(
                         textTheme,
                         palette,
-                        MeasureConstants.bottomLabel,
-                        '${_fmt(scaleMax)} m',
+                        '${MeasureConstants.untilLabel} ${_fmt(scaleMax)} m',
                       ),
                     ],
                   ),

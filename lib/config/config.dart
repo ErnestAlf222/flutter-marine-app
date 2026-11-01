@@ -12,6 +12,9 @@ export 'constants/route_constants.dart';
 export 'constants/trait_constants.dart';
 export 'constants/url_constants.dart';
 
+// Utils
+export 'utils/text_utils.dart';
+
 // Router
 export 'router/app_router.dart';
 

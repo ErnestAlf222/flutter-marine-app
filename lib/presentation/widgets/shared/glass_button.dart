@@ -8,7 +8,7 @@ class GlassButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onPressed;
   final String? tooltip;
-  // Para el favorito marcado: el icono pasa al coral de acento
+  // Para el favorito marcado: el icono pasa al rojo de favorito
   final bool selected;
   final IconData? selectedIcon;
   final double size;
@@ -43,7 +43,7 @@ class GlassButton extends StatelessWidget {
                 child: Icon(
                   selected ? (selectedIcon ?? icon) : icon,
                   key: ValueKey(selected),
-                  color: selected ? palette.coral : palette.paper,
+                  color: selected ? palette.favorite : palette.paper,
                 ),
               ),
             ),

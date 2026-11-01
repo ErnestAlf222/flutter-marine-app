@@ -121,10 +121,7 @@ ViewTransform fitBounds({
     projection.project(latMin, lonMax),
   );
   final scale = min(box.width / rect.width, box.height / rect.height);
-  return ViewTransform(
-    scale,
-    box.center(Offset.zero) - rect.center * scale,
-  );
+  return ViewTransform(scale, box.center(Offset.zero) - rect.center * scale);
 }
 
 /// Mantiene el lienzo cubriendo el marco; si el lienzo es menor, lo centra.
@@ -144,15 +141,20 @@ ViewTransform clampTransform(ViewTransform t, Size world, Size viewport) {
   );
 }
 
-/// Vista que deja [worldPoint] en el centro del marco, sin salirse del lienzo.
+/// Vista que deja [worldPoint] en el centro del marco (o en [anchor], un punto del marco),
+/// sin salirse del lienzo.
 ViewTransform centerOn({
   required Offset worldPoint,
   required double scale,
   required Size world,
   required Size viewport,
+  Offset? anchor,
 }) {
   return clampTransform(
-    ViewTransform(scale, viewport.center(Offset.zero) - worldPoint * scale),
+    ViewTransform(
+      scale,
+      (anchor ?? viewport.center(Offset.zero)) - worldPoint * scale,
+    ),
     world,
     viewport,
   );
@@ -256,7 +258,8 @@ List<LabelPlacement> placeLabels(
   double gap = MapConstants.labelGap,
 }) {
   final circles = {
-    for (final r in requests) r.id: Rect.fromCircle(center: r.anchor, radius: r.radius),
+    for (final r in requests)
+      r.id: Rect.fromCircle(center: r.anchor, radius: r.radius),
   };
   final placed = <LabelPlacement>[];
 
@@ -266,13 +269,48 @@ List<LabelPlacement> placeLabels(
     final diagonal = r.radius * 0.7 + gap;
     return [
       Rect.fromLTWH(a.dx - s.width / 2, a.dy + d, s.width, s.height), // abajo
-      Rect.fromLTWH(a.dx - s.width / 2, a.dy - d - s.height, s.width, s.height), // arriba
-      Rect.fromLTWH(a.dx + d, a.dy - s.height / 2, s.width, s.height), // derecha
-      Rect.fromLTWH(a.dx - d - s.width, a.dy - s.height / 2, s.width, s.height), // izquierda
-      Rect.fromLTWH(a.dx + diagonal, a.dy + diagonal, s.width, s.height), // abajo-derecha
-      Rect.fromLTWH(a.dx - diagonal - s.width, a.dy + diagonal, s.width, s.height), // abajo-izquierda
-      Rect.fromLTWH(a.dx + diagonal, a.dy - diagonal - s.height, s.width, s.height), // arriba-derecha
-      Rect.fromLTWH(a.dx - diagonal - s.width, a.dy - diagonal - s.height, s.width, s.height), // arriba-izquierda
+      Rect.fromLTWH(
+        a.dx - s.width / 2,
+        a.dy - d - s.height,
+        s.width,
+        s.height,
+      ), // arriba
+      Rect.fromLTWH(
+        a.dx + d,
+        a.dy - s.height / 2,
+        s.width,
+        s.height,
+      ), // derecha
+      Rect.fromLTWH(
+        a.dx - d - s.width,
+        a.dy - s.height / 2,
+        s.width,
+        s.height,
+      ), // izquierda
+      Rect.fromLTWH(
+        a.dx + diagonal,
+        a.dy + diagonal,
+        s.width,
+        s.height,
+      ), // abajo-derecha
+      Rect.fromLTWH(
+        a.dx - diagonal - s.width,
+        a.dy + diagonal,
+        s.width,
+        s.height,
+      ), // abajo-izquierda
+      Rect.fromLTWH(
+        a.dx + diagonal,
+        a.dy - diagonal - s.height,
+        s.width,
+        s.height,
+      ), // arriba-derecha
+      Rect.fromLTWH(
+        a.dx - diagonal - s.width,
+        a.dy - diagonal - s.height,
+        s.width,
+        s.height,
+      ), // arriba-izquierda
     ];
   }
 
@@ -317,7 +355,9 @@ List<LabelPlacement> placeLabels(
     }
 
     if (bestRect != null) {
-      placed.add(LabelPlacement(id: request.id, rect: bestRect, isShort: bestShort));
+      placed.add(
+        LabelPlacement(id: request.id, rect: bestRect, isShort: bestShort),
+      );
     }
   }
   return placed;
@@ -337,7 +377,9 @@ Path buildLandPath(List<Float64List> rings, MapProjection projection) {
     if (maxLat < MapConstants.latMin) continue;
 
     for (var i = 0; i < ring.length; i += 2) {
-      final lat = ring[i + 1].clamp(MapConstants.latMin, MapConstants.latMax).toDouble();
+      final lat = ring[i + 1]
+          .clamp(MapConstants.latMin, MapConstants.latMax)
+          .toDouble();
       final p = projection.project(lat, ring[i]);
       if (i == 0) {
         path.moveTo(p.dx, p.dy);
@@ -348,4 +390,18 @@ Path buildLandPath(List<Float64List> rings, MapProjection projection) {
     path.close();
   }
   return path;
+}
+
+/// Opacidad con que se pinta una zona: apagada si el mini mapa no la resalta; con otra
+/// zona seleccionada, atenuada para que la seleccionada destaque.
+double zoneAlpha({
+  required bool lit,
+  required String? selectedId,
+  required String zoneId,
+}) {
+  if (!lit) return MapConstants.compactDimmedAlpha;
+  if (selectedId != null && selectedId != zoneId) {
+    return MapConstants.unselectedAlpha;
+  }
+  return 1;
 }

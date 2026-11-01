@@ -44,7 +44,8 @@ class MeasureConstants {
   static const String depthQuestion = 'Entre qué profundidades se le encuentra';
   static const String sizeQuestion = 'Entre qué tamaños se le encuentra';
   static const String surfaceLabel = 'Superficie';
-  static const String bottomLabel = 'Fondo';
+  // "Hasta N m": el final de la escala de la especie, no el fondo del mar
+  static const String untilLabel = 'Hasta';
   static const String smallLabel = 'Más pequeño';
   static const String largeLabel = 'Más grande';
 

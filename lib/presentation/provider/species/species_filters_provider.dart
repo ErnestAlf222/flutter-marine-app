@@ -28,6 +28,34 @@ class SpeciesFilters {
     this.depthMax,
   });
 
+  // Igualdad por valor: aplicar filtros idénticos a los que ya hay no es un cambio, y sin esto
+  // Riverpod trata cualquier copia como estado nuevo y la lista se recarga desde el inicio
+  @override
+  bool operator ==(Object other) =>
+      other is SpeciesFilters &&
+      other.query == query &&
+      other.category == category &&
+      other.zone == zone &&
+      other.conservationStatus == conservationStatus &&
+      other.dangerLevel == dangerLevel &&
+      other.sizeMin == sizeMin &&
+      other.sizeMax == sizeMax &&
+      other.depthMin == depthMin &&
+      other.depthMax == depthMax;
+
+  @override
+  int get hashCode => Object.hash(
+    query,
+    category,
+    zone,
+    conservationStatus,
+    dangerLevel,
+    sizeMin,
+    sizeMax,
+    depthMin,
+    depthMax,
+  );
+
   // Con un solo carácter /search no devuelve nada, así que aún no cuenta como búsqueda
   bool get hasQuery => query.trim().length >= ApiConstants.minSearchLength;
 

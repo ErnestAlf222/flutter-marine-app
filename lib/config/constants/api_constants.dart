@@ -42,6 +42,14 @@ class ApiConstants {
   static const int searchResultCap = 50;
   static const int minSearchLength = 2;
 
+  // El servidor distingue acentos: "tiburon" no devuelve nada y "tibur" devuelve 45 "Tiburón…"
+  // (medido con curl). Si una búsqueda sin acentos vuelve vacía se reintenta con prefijos más
+  // cortos —sin los dos últimos caracteres cada vez, con este mínimo— y se filtra en el cliente.
+  // Como mucho 2 peticiones extra por búsqueda, por el límite de 100 por minuto.
+  static const int searchFallbackTrim = 2;
+  static const int searchFallbackMinLength = 3;
+  static const int searchFallbackMaxRequests = 2;
+
   // Pausa tras la última tecla antes de buscar: el límite es de 100 peticiones por minuto
   static const Duration searchDebounce = Duration(milliseconds: 600);
 

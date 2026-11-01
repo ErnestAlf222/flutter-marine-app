@@ -86,7 +86,7 @@ class _FavoritesViewState extends ConsumerState<FavoritesView> {
             ),
           ),
         ),
-        favorites.when(
+        favorites.whenRetry(
           loading: () => _skeleton(),
           error: (error, _) => SliverFillRemaining(
             hasScrollBody: false,

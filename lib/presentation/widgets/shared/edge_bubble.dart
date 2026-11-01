@@ -164,10 +164,11 @@ class _EdgeBubbleState extends State<EdgeBubble> {
       onPanCancel: () => _drop(area, topInset),
       child: GlassSurface(
         circle: true,
-        // El acento del tema tiñe el cristal para que se vea sobre fondos casi negros
-        tint: scheme.primary,
-        tintAlpha: 0.32,
-        borderAlpha: 0.5,
+        // Tinte oscuro casi sólido (el icono se lee sobre cualquier foto) y borde de
+        // acento, que es lo que la separa de un fondo casi negro
+        tintAlpha: DesignConstants.glassSolidAlpha,
+        borderColor: scheme.primary,
+        borderAlpha: DesignConstants.bubbleBorderAlpha,
         child: Center(
           child: Badge(
             isLabelVisible: widget.badge > 0,
@@ -203,9 +204,9 @@ class _EdgeBubbleState extends State<EdgeBubble> {
           left: onRight ? radius : Radius.zero,
           right: onRight ? Radius.zero : radius,
         ),
-        tint: scheme.primary,
-        tintAlpha: 0.32,
-        borderAlpha: 0.5,
+        tintAlpha: DesignConstants.glassSolidAlpha,
+        borderColor: scheme.primary,
+        borderAlpha: DesignConstants.bubbleBorderAlpha,
         child: Center(
           child: Icon(
             onRight ? Icons.chevron_left : Icons.chevron_right,

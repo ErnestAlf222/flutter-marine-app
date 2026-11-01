@@ -7,6 +7,15 @@ class MotionConstants {
   // Excepción a la curva única: el rebote del corazón necesita elasticidad
   static const Curve bounce = Curves.elasticOut;
 
+  // El mapa se acerca y centra la zona seleccionada
+  static const Duration mapFocus = Duration(milliseconds: 650);
+
+  // Carrusel del héroe de Inicio: cada cuánto avanza solo, cuánto dura el desplazamiento
+  // y cuánto espera para reanudar tras soltarlo
+  static const Duration heroAutoAdvance = Duration(seconds: 3);
+  static const Duration heroAdvance = Duration(milliseconds: 700);
+  static const Duration heroResumeDelay = Duration(seconds: 5);
+
   // Segundos sin tocar la burbuja de filtros antes de minimizarla
   static const Duration bubbleIdle = Duration(seconds: 4);
 

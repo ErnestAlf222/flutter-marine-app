@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -472,7 +473,7 @@ class _HeroSection extends ConsumerWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          featured.when(
+          featured.whenRetry(
             // Al refrescar se conserva el héroe anterior mientras llega el nuevo
             skipLoadingOnReload: true,
             loading: () => const _HeroLoading(),
@@ -528,24 +529,98 @@ class _HeroCarousel extends StatefulWidget {
   State<_HeroCarousel> createState() => _HeroCarouselState();
 }
 
-class _HeroCarouselState extends State<_HeroCarousel> {
+class _HeroCarouselState extends State<_HeroCarousel>
+    with WidgetsBindingObserver {
+  // Con 3 o más especies el carrusel da la vuelta sin saltos (páginas con módulo); con
+  // menos, las vecinas repetirían el tag del Hero y avanza hacia atrás al llegar al final
+  bool get _loops => widget.species.length >= 3;
+  int get _count => widget.species.length;
+
   // Deja asomar las tarjetas vecinas, giradas, para invitar a deslizar
-  final _controller = PageController(
+  late final _controller = PageController(
+    initialPage: _loops ? _count * _loopPages : 0,
     viewportFraction: DesignConstants.heroViewportFraction,
   );
+  static const _loopPages = 1000;
   int _index = 0;
+
+  // Avance automático: solo corre si todo esto se cumple a la vez
+  Timer? _timer;
+  bool _tabVisible = true;
+  bool _foreground = true;
+  bool _reducedMotion = false;
+  int _pointers = 0;
+
+  bool get _autoplay =>
+      _tabVisible && _foreground && !_reducedMotion && _pointers == 0 && _count > 1;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Sin ticker activo la pestaña no se ve o hay otra pantalla encima (el Detalle)
+    _tabVisible = TickerMode.valuesOf(context).enabled;
+    _reducedMotion = MediaQuery.disableAnimationsOf(context);
+    _sync();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _foreground = state == AppLifecycleState.resumed;
+    _sync();
+  }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _timer?.cancel();
     _controller.dispose();
     super.dispose();
+  }
+
+  // Reprograma el avance según las condiciones actuales; [delay] sirve para esperar más
+  // tras soltar el carrusel
+  void _sync([Duration delay = MotionConstants.heroAutoAdvance]) {
+    _timer?.cancel();
+    _timer = null;
+    if (_autoplay) _timer = Timer(delay, _advance);
+  }
+
+  void _advance() {
+    _timer = null;
+    if (!mounted || !_autoplay || !_controller.hasClients) return;
+
+    final current = _page.round();
+    final next = _loops ? current + 1 : (current + 1) % _count;
+    _controller.animateToPage(
+      next,
+      duration: MotionConstants.heroAdvance,
+      curve: MotionConstants.curve,
+    );
+    _sync();
+  }
+
+  // Tocar o arrastrar pausa; unos segundos después de soltar se reanuda
+  void _pointerDown(PointerDownEvent _) {
+    _pointers++;
+    _sync();
+  }
+
+  void _pointerUp(PointerEvent _) {
+    _pointers = (_pointers - 1).clamp(0, 99);
+    _sync(MotionConstants.heroResumeDelay);
   }
 
   // Página fraccionaria durante el deslizamiento; antes del primer layout aún no existe
   double get _page => _controller.hasClients &&
           _controller.position.haveDimensions
-      ? _controller.page ?? _index.toDouble()
-      : _index.toDouble();
+      ? _controller.page ?? _controller.initialPage.toDouble()
+      : _controller.initialPage.toDouble();
 
   Widget _transformed(int index, Widget child) {
     final delta = (index - _page).clamp(-1.0, 1.0);
@@ -577,15 +652,20 @@ class _HeroCarouselState extends State<_HeroCarousel> {
         _HeroBackdrop(species: widget.species[_index]),
         Padding(
           padding: _heroCardInsets(context),
-          child: PageView.builder(
-            controller: _controller,
-            itemCount: widget.species.length,
-            onPageChanged: (i) => setState(() => _index = i),
-            itemBuilder: (context, index) => AnimatedBuilder(
-              animation: _controller,
-              builder: (context, child) => _transformed(index, child!),
-              child: Center(
-                child: _HeroCard(species: widget.species[index]),
+          child: Listener(
+            onPointerDown: _pointerDown,
+            onPointerUp: _pointerUp,
+            onPointerCancel: _pointerUp,
+            child: PageView.builder(
+              controller: _controller,
+              itemCount: _loops ? null : _count,
+              onPageChanged: (i) => setState(() => _index = i % _count),
+              itemBuilder: (context, index) => AnimatedBuilder(
+                animation: _controller,
+                builder: (context, child) => _transformed(index, child!),
+                child: Center(
+                  child: _HeroCard(species: widget.species[index % _count]),
+                ),
               ),
             ),
           ),
@@ -830,7 +910,7 @@ class _DiscoverSliver extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(
         horizontal: DesignConstants.pagePadding,
       ),
-      sliver: discover.when(
+      sliver: discover.whenRetry(
         skipLoadingOnReload: true,
         loading: () => SliverMasonryGrid.count(
           crossAxisCount: 2,

@@ -30,6 +30,10 @@ class ExploreScreen extends StatelessWidget {
 
 // Hoja de cristal: el contenido se pinta sobre una superficie translúcida con desenfoque
 Future<void> _openFilters(BuildContext context) {
+  // Si el buscador seguía enfocado (con el teclado ya oculto), al cerrar la hoja Flutter le
+  // devolvía el foco y el teclado se abría solo: se suelta antes de abrirla, así no hay a
+  // quién devolverlo
+  FocusManager.instance.primaryFocus?.unfocus();
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -251,7 +255,8 @@ class _ActiveFilters extends ConsumerWidget {
             if (chips.length > 1)
               _GlassChip(
                 label: 'Quitar todos',
-                onTap: () => notifier.apply(SpeciesFilters(query: filters.query)),
+                onTap: () =>
+                    notifier.apply(SpeciesFilters(query: filters.query)),
               ),
           ],
         ),
@@ -282,6 +287,7 @@ class _GlassChip extends StatelessWidget {
       padding: const EdgeInsets.only(right: 8),
       child: GlassSurface(
         borderRadius: BorderRadius.circular(999),
+        tintAlpha: DesignConstants.glassSolidAlpha,
         child: Material(
           type: MaterialType.transparency,
           child: InkWell(
@@ -293,9 +299,8 @@ class _GlassChip extends StatelessWidget {
                 children: [
                   Text(
                     label,
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: palette.paper,
-                    ),
+                    style: Theme.of(context).textTheme.labelLarge
+                        ?.copyWith(color: palette.paper),
                   ),
                   if (onRemove != null)
                     Padding(
@@ -338,7 +343,7 @@ class _Results extends ConsumerWidget {
     return AnimatedSwitcher(
       duration: MotionConstants.short,
       switchInCurve: MotionConstants.curve,
-      child: list.when(
+      child: list.whenRetry(
         loading: () => const _ResultsSkeleton(key: ValueKey('loading')),
         error: (error, _) => _ResultsMessage(
           key: const ValueKey('error'),
@@ -355,9 +360,8 @@ class _Results extends ConsumerWidget {
                 actionLabel: filters.hasQuery || filters.activeCount > 0
                     ? 'Quitar filtros y búsqueda'
                     : null,
-                onAction: () => ref
-                    .read(speciesFiltersProvider.notifier)
-                    .clear(),
+                onAction: () =>
+                    ref.read(speciesFiltersProvider.notifier).clear(),
               )
             : _ResultsGrid(key: const ValueKey('data'), state: state),
       ),
@@ -391,7 +395,10 @@ class _ResultsGridState extends ConsumerState<_ResultsGrid> {
 
   void _onScroll() {
     final position = _scroll.position;
-    if (position.extentAfter < DesignConstants.loadMoreExtent) {
+    // Tras un fallo el pie ofrece "Reintentar": el desplazamiento no lo repite por su cuenta
+    // (al cambiar el pie, la lista se reajusta y volvía a pedir la página sin parar)
+    final failed = ref.read(speciesListProvider).value?.loadMoreError != null;
+    if (!failed && position.extentAfter < DesignConstants.loadMoreExtent) {
       ref.read(speciesListProvider.notifier).loadNextPage();
     }
   }
@@ -403,6 +410,8 @@ class _ResultsGridState extends ConsumerState<_ResultsGrid> {
 
     return CustomScrollView(
       controller: _scroll,
+      // Al desplazar la lista el teclado se cierra
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       slivers: [
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(
@@ -424,8 +433,9 @@ class _ResultsGridState extends ConsumerState<_ResultsGrid> {
                 child: SpeciesTile(
                   parallax: true,
                   species: species,
-                  aspectRatio: DesignConstants
-                      .mosaicAspects[index % DesignConstants.mosaicAspects.length],
+                  aspectRatio:
+                      DesignConstants.mosaicAspects[index %
+                          DesignConstants.mosaicAspects.length],
                   onTap: () => openSpecies(context, species),
                 ),
               );
@@ -448,7 +458,11 @@ class _ResultsGridState extends ConsumerState<_ResultsGrid> {
     );
   }
 
-  Widget _footer(BuildContext context, SpeciesListState state, OceanPalette palette) {
+  Widget _footer(
+    BuildContext context,
+    SpeciesListState state,
+    OceanPalette palette,
+  ) {
     // Cargar más resultados: un pez nada mientras llega la siguiente página
     if (state.isLoadingMore) {
       return const Center(child: FishLoader());
@@ -480,9 +494,8 @@ class _ResultsGridState extends ConsumerState<_ResultsGrid> {
             ? 'La búsqueda muestra hasta ${ApiConstants.searchResultCap} resultados y los filtros se aplican sobre ellos. Escribe algo más específico para afinarla.'
             : 'Llegaste al final',
         textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: palette.paper.withValues(alpha: 0.6),
-        ),
+        style: Theme.of(context).textTheme.bodySmall
+            ?.copyWith(color: palette.paper.withValues(alpha: 0.6)),
       );
     }
 
@@ -557,7 +570,10 @@ class _ResultsMessage extends StatelessWidget {
             ),
             if (actionLabel != null) ...[
               const SizedBox(height: 16),
-              FilledButton.tonal(onPressed: onAction, child: Text(actionLabel!)),
+              FilledButton.tonal(
+                onPressed: onAction,
+                child: Text(actionLabel!),
+              ),
             ],
           ],
         ),
@@ -620,17 +636,19 @@ class _FiltersSheetState extends ConsumerState<_FiltersSheet> {
 
   void _apply() {
     final current = ref.read(speciesFiltersProvider);
-    ref.read(speciesFiltersProvider.notifier).apply(
-      current.copyWith(
-        category: () => _category,
-        conservationStatus: () => _status,
-        dangerLevel: () => _danger,
-        depthMin: () => _depthMin,
-        depthMax: () => null,
-        sizeMin: () => _sizeMin,
-        sizeMax: () => null,
-      ),
+    final next = current.copyWith(
+      category: () => _category,
+      conservationStatus: () => _status,
+      dangerLevel: () => _danger,
+      depthMin: () => _depthMin,
+      depthMax: () => null,
+      sizeMin: () => _sizeMin,
+      sizeMax: () => null,
     );
+    // Con el borrador igual al estado actual no hay nada que aplicar: la lista no se toca
+    if (next != current) {
+      ref.read(speciesFiltersProvider.notifier).apply(next);
+    }
     Navigator.of(context).pop();
   }
 
@@ -642,191 +660,220 @@ class _FiltersSheetState extends ConsumerState<_FiltersSheet> {
       color: palette.paper.withValues(alpha: 0.08),
     );
 
-    return SizedBox(
-      height:
-          MediaQuery.sizeOf(context).height *
-          DesignConstants.filterSheetHeightFraction,
-      // Hoja de cristal: translúcida, con desenfoque, borde fino y luz suave
+    return ConstrainedBox(
+      // Se ajusta al contenido; solo si no cabe llega al tope y se desplaza
+      constraints: BoxConstraints(
+        maxHeight:
+            MediaQuery.sizeOf(context).height *
+            DesignConstants.filterSheetMaxFraction,
+      ),
+      // Hoja de cristal: tinte oscuro casi sólido con desenfoque, borde fino y luz suave
       child: GlassSurface(
         borderRadius: const BorderRadius.vertical(
           top: Radius.circular(DesignConstants.cardRadius),
         ),
-        tintAlpha: DesignConstants.glassSheetAlpha,
+        tintAlpha: DesignConstants.glassSolidAlpha,
         child: Column(
-        children: [
-          // Asa para arrastrar, dibujada aquí porque la hoja no lleva la de Material
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: palette.paper.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(999),
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Asa para arrastrar, dibujada aquí porque la hoja no lleva la de Material
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: palette.paper.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: const SizedBox(width: 36, height: 4),
               ),
-              child: const SizedBox(width: 36, height: 4),
             ),
-          ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(
-                horizontal: DesignConstants.pagePadding,
-              ),
-              children: [
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: palette.paper.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(
-                      DesignConstants.tileRadius,
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: DesignConstants.pagePadding,
+                ),
+                children: [
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: palette.paper.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(
+                        DesignConstants.tileRadius,
+                      ),
                     ),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(
-                      DesignConstants.tileRadius,
-                    ),
-                    child: Column(
-                      children: [
-                        _SelectorRow(
-                          title: 'Grupo',
-                          value: _category == null
-                              ? 'Cualquiera'
-                              : CategoryConstants.labels[_category] ?? _category!,
-                          open: _open == _Section.group,
-                          onToggle: () => _toggle(_Section.group),
-                          child: _OptionList(
-                            options: [
-                              for (final id in CategoryConstants.ids)
-                                _Option(
-                                  id: id,
-                                  label: CategoryConstants.labels[id] ?? id,
-                                  dot: palette.categoryColor(id),
-                                ),
-                            ],
-                            selected: _category,
-                            onSelected: (id) => setState(() {
-                              _category = id;
-                              _open = null;
-                            }),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(
+                        DesignConstants.tileRadius,
+                      ),
+                      child: Column(
+                        children: [
+                          _SelectorRow(
+                            title: 'Grupo',
+                            value: _category == null
+                                ? 'Cualquiera'
+                                : CategoryConstants.labels[_category] ??
+                                      _category!,
+                            open: _open == _Section.group,
+                            onToggle: () => _toggle(_Section.group),
+                            child: _OptionList(
+                              options: [
+                                for (final id in CategoryConstants.ids)
+                                  _Option(
+                                    id: id,
+                                    label: CategoryConstants.labels[id] ?? id,
+                                    dot: palette.categoryColor(id),
+                                  ),
+                              ],
+                              selected: _category,
+                              onSelected: (id) => setState(() {
+                                _category = id;
+                                _open = null;
+                              }),
+                            ),
                           ),
-                        ),
-                        divider,
-                        _SelectorRow(
-                          title: 'Estado de conservación',
-                          value: _status == null
-                              ? 'Cualquiera'
-                              : '$_status · ${ConservationConstants.labels[_status]}',
-                          open: _open == _Section.status,
-                          onToggle: () => _toggle(_Section.status),
-                          child: _OptionList(
-                            options: [
-                              for (final code in ConservationConstants.catalog)
-                                _Option(
-                                  id: code,
-                                  label:
-                                      '$code · ${ConservationConstants.labels[code]}',
-                                  dot: palette.uicnColor(code),
-                                ),
-                            ],
-                            selected: _status,
-                            onSelected: (code) => setState(() {
-                              _status = code;
-                              _open = null;
-                            }),
+                          divider,
+                          _SelectorRow(
+                            title: 'Estado de conservación',
+                            value: _status == null
+                                ? 'Cualquiera'
+                                : '$_status · ${ConservationConstants.labels[_status]}',
+                            open: _open == _Section.status,
+                            onToggle: () => _toggle(_Section.status),
+                            child: _OptionList(
+                              options: [
+                                for (final code
+                                    in ConservationConstants.catalog)
+                                  _Option(
+                                    id: code,
+                                    label:
+                                        '$code · ${ConservationConstants.labels[code]}',
+                                    dot: palette.uicnColor(code),
+                                  ),
+                              ],
+                              selected: _status,
+                              onSelected: (code) => setState(() {
+                                _status = code;
+                                _open = null;
+                              }),
+                            ),
                           ),
-                        ),
-                        divider,
-                        _SelectorRow(
-                          title: 'Peligrosidad',
-                          value: _danger == null
-                              ? 'Cualquiera'
-                              : TraitConstants.danger(_danger!),
-                          open: _open == _Section.danger,
-                          onToggle: () => _toggle(_Section.danger),
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                            child: SizedBox(
-                              width: double.infinity,
-                              child: SegmentedButton<String>(
-                                emptySelectionAllowed: true,
-                                showSelectedIcon: false,
-                                segments: [
-                                  for (final entry
-                                      in TraitConstants.dangerLevels.entries)
-                                    ButtonSegment(
-                                      value: entry.key,
-                                      label: Text(entry.value),
-                                    ),
-                                ],
-                                selected: {?_danger},
-                                onSelectionChanged: (s) => setState(
-                                  () => _danger = s.isEmpty ? null : s.first,
+                          divider,
+                          _SelectorRow(
+                            title: 'Peligrosidad',
+                            value: _danger == null
+                                ? 'Cualquiera'
+                                : TraitConstants.danger(_danger!),
+                            open: _open == _Section.danger,
+                            onToggle: () => _toggle(_Section.danger),
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                              child: SizedBox(
+                                width: double.infinity,
+                                child: SegmentedButton<String>(
+                                  emptySelectionAllowed: true,
+                                  showSelectedIcon: false,
+                                  segments: [
+                                    for (final entry
+                                        in TraitConstants.dangerLevels.entries)
+                                      ButtonSegment(
+                                        value: entry.key,
+                                        label: Text(entry.value),
+                                      ),
+                                  ],
+                                  selected: {?_danger},
+                                  onSelectionChanged: (s) => setState(
+                                    () => _danger = s.isEmpty ? null : s.first,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                        divider,
-                        _SelectorRow(
-                          title: 'Profundidad',
-                          value: _depthMin == null
-                              ? 'Cualquiera'
-                              : 'Llegan a ${_fmt(_depthMin!)} m o más',
-                          open: _open == _Section.depth,
-                          onToggle: () => _toggle(_Section.depth),
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                            child: _StepSlider(
-                              steps: MeasureConstants.depthFilterSteps,
-                              value: _depthMin,
-                              format: (v) => '${_fmt(v)} m o más',
-                              summary: 'Llegan al menos a',
-                              hint:
-                                  'Muestra las especies cuyo rango llega a esa profundidad o más. No indica a qué profundidad viven.',
-                              onChanged: (v) => setState(() => _depthMin = v),
+                          divider,
+                          _SelectorRow(
+                            title: 'Profundidad',
+                            value: _depthMin == null
+                                ? 'Cualquiera'
+                                : 'Llegan a ${_fmt(_depthMin!)} m o más',
+                            open: _open == _Section.depth,
+                            onToggle: () => _toggle(_Section.depth),
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                              child: _StepSlider(
+                                steps: MeasureConstants.depthFilterSteps,
+                                value: _depthMin,
+                                format: (v) => '${_fmt(v)} m o más',
+                                summary: 'Llegan al menos a',
+                                hint: 'Muestra las especies cuyo rango llega a esa profundidad o más. No indica a qué profundidad viven.',
+                                onChanged: (v) => setState(() => _depthMin = v),
+                              ),
                             ),
                           ),
-                        ),
-                        divider,
-                        _SelectorRow(
-                          title: 'Tamaño',
-                          value: _sizeMin == null
-                              ? 'Cualquiera'
-                              : 'Alcanzan ${SizeBar.format(_sizeMin!)} o más',
-                          open: _open == _Section.size,
-                          onToggle: () => _toggle(_Section.size),
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                            child: _StepSlider(
-                              steps: MeasureConstants.sizeFilterSteps,
-                              value: _sizeMin,
-                              format: (v) => '${SizeBar.format(v)} o más',
-                              summary: 'Alcanzan al menos',
-                              hint:
-                                  'Muestra las especies cuya talla máxima llega a esa medida o más. No indica cuánto miden los ejemplares.',
-                              onChanged: (v) => setState(() => _sizeMin = v),
+                          divider,
+                          _SelectorRow(
+                            title: 'Tamaño',
+                            value: _sizeMin == null
+                                ? 'Cualquiera'
+                                : 'Alcanzan ${SizeBar.format(_sizeMin!)} o más',
+                            open: _open == _Section.size,
+                            onToggle: () => _toggle(_Section.size),
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                              child: _StepSlider(
+                                steps: MeasureConstants.sizeFilterSteps,
+                                value: _sizeMin,
+                                format: (v) => '${SizeBar.format(v)} o más',
+                                summary: 'Alcanzan al menos',
+                                hint: 'Muestra las especies cuya talla máxima llega a esa medida o más. No indica cuánto miden los ejemplares.',
+                                onChanged: (v) => setState(() => _sizeMin = v),
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          // Fijos abajo: siempre a mano, aunque la lista se desplace
-          Padding(
-            padding: const EdgeInsets.all(DesignConstants.pagePadding),
-            child: Row(
-              children: [
-                // "Limpiar" solo tiene sentido cuando hay algo elegido
-                if (_hasDraft)
-                  TextButton(onPressed: _clear, child: const Text('Limpiar')),
-                const Spacer(),
-                FilledButton(onPressed: _apply, child: const Text('Aplicar')),
-              ],
+            // Dentro de la hoja y fijos abajo, aunque la lista se desplace
+            Padding(
+              padding: const EdgeInsets.all(DesignConstants.pagePadding),
+              child: Row(
+                children: [
+                  // "Limpiar" solo tiene sentido cuando hay algo elegido
+                  if (_hasDraft) ...[
+                    Expanded(
+                      child: SizedBox(
+                        height: DesignConstants.filterButtonHeight,
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: palette.paper,
+                            side: BorderSide(
+                              color: palette.paper.withValues(alpha: 0.6),
+                            ),
+                          ),
+                          onPressed: _clear,
+                          child: const Text('Limpiar'),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
+                  Expanded(
+                    flex: 2,
+                    child: SizedBox(
+                      height: DesignConstants.filterButtonHeight,
+                      child: FilledButton(
+                        onPressed: _apply,
+                        child: const Text('Aplicar'),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
@@ -861,35 +908,50 @@ class _SelectorRow extends StatelessWidget {
       children: [
         InkWell(
           onTap: onToggle,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: textTheme.titleSmall?.copyWith(color: palette.paper),
-                  ),
-                ),
-                Flexible(
-                  child: Text(
-                    value,
-                    textAlign: TextAlign.end,
-                    style: textTheme.labelLarge?.copyWith(
-                      color: value == 'Cualquiera'
-                          ? palette.paper.withValues(alpha: 0.6)
-                          : accent,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              minHeight: DesignConstants.filterRowHeight,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: textTheme.titleSmall?.copyWith(
+                        color: palette.paper,
+                        fontSize: DesignConstants.filterLabelSize,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                AnimatedRotation(
-                  turns: open ? 0.5 : 0,
-                  duration: duration,
-                  curve: MotionConstants.curve,
-                  child: Icon(Icons.expand_more, color: palette.paper),
-                ),
-              ],
+                  Flexible(
+                    child: Text(
+                      value,
+                      textAlign: TextAlign.end,
+                      style: textTheme.labelLarge?.copyWith(
+                        fontSize: DesignConstants.filterValueSize,
+                        color: value == 'Cualquiera'
+                            ? palette.paper.withValues(
+                                alpha: DesignConstants.glassMutedTextAlpha,
+                              )
+                            : accent,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  AnimatedRotation(
+                    turns: open ? 0.5 : 0,
+                    duration: duration,
+                    curve: MotionConstants.curve,
+                    child: Icon(
+                      Icons.expand_more,
+                      size: DesignConstants.filterArrowSize,
+                      color: palette.paper,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -939,37 +1001,45 @@ class _OptionList extends StatelessWidget {
     }) {
       return InkWell(
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              // Mismo ancho con y sin punto para que las etiquetas queden alineadas
-              SizedBox(
-                width: 12,
-                height: 12,
-                child: dot == null
-                    ? null
-                    : DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: dot,
-                          shape: BoxShape.circle,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            minHeight: DesignConstants.filterOptionHeight,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                // Mismo ancho con y sin punto para que las etiquetas queden alineadas
+                SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: dot == null
+                      ? null
+                      : DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: dot,
+                            shape: BoxShape.circle,
+                          ),
                         ),
-                      ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  label,
-                  style: textTheme.bodyMedium?.copyWith(color: palette.paper),
                 ),
-              ),
-              if (isSelected)
-                Icon(
-                  Icons.check,
-                  size: 20,
-                  color: Theme.of(context).colorScheme.primary,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: palette.paper,
+                      fontSize: DesignConstants.filterValueSize,
+                    ),
+                  ),
                 ),
-            ],
+                if (isSelected)
+                  Icon(
+                    Icons.check,
+                    size: 22,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+              ],
+            ),
           ),
         ),
       );
@@ -1057,4 +1127,3 @@ class _StepSlider extends StatelessWidget {
     );
   }
 }
-

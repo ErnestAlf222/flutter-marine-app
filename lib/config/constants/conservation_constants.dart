@@ -31,8 +31,7 @@ class ConservationConstants {
     'EW': 'Solo sobrevive en cultivo, en cautiverio o en poblaciones naturalizadas '
         'lejos de su área original.',
     'EX': 'No hay duda razonable de que murió el último individuo.',
-    'DD': 'No hay información suficiente para estimar su riesgo de extinción. '
-        'No significa que esté a salvo.',
+    'DD': 'No hay información suficiente para evaluar su riesgo de extinción.',
     'NE': 'Todavía no se ha evaluado con los criterios de la UICN.',
   };
 

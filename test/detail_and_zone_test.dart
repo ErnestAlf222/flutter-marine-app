@@ -165,7 +165,7 @@ void main() {
         expect(find.text(MeasureConstants.depthQuestion), findsOneWidget);
         expect(find.text('5–30 m'), findsOneWidget);
         expect(find.text(MeasureConstants.surfaceLabel), findsOneWidget);
-        expect(find.text(MeasureConstants.bottomLabel), findsOneWidget);
+        expect(find.text('${MeasureConstants.untilLabel} 50 m'), findsOneWidget);
         expect(find.byIcon(Icons.arrow_downward), findsOneWidget);
       },
     );

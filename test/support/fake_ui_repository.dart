@@ -7,6 +7,8 @@ class FakeUiRepository extends SpeciesRepository {
   // Cuántas especies devuelve /search (la API real no pasa de 50)
   final int searchCount;
   final searchQueries = <String>[];
+  // Cuántas veces se pidió una página de /species (para saber si la lista se recargó)
+  int speciesCalls = 0;
 
   FakeUiRepository({this.count = 6, int? searchCount})
     : searchCount = searchCount ?? count;
@@ -40,10 +42,13 @@ class FakeUiRepository extends SpeciesRepository {
     double? depthMin,
     double? depthMax,
     bool? featured,
-  }) async => (
-    SpeciesPage(items: species(count), page: 1, perPage: perPage, total: count),
-    '',
-  );
+  }) async {
+    speciesCalls++;
+    return (
+      SpeciesPage(items: species(count), page: 1, perPage: perPage, total: count),
+      '',
+    );
+  }
 
   @override
   Future<(List<Species>?, String)> searchSpecies({

@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
@@ -19,6 +20,9 @@ class OceanMap extends StatefulWidget {
   final Set<String> highlighted;
   final bool compact;
   final String? selectedId;
+  // Alto (px) del borde inferior del mapa que tapa algo, como la hoja de una zona: la zona
+  // seleccionada se centra en el resto
+  final double focusInset;
   final ValueChanged<OceanZone>? onZoneTap;
 
   const OceanMap({
@@ -28,6 +32,7 @@ class OceanMap extends StatefulWidget {
     this.highlighted = const {},
     this.compact = false,
     this.selectedId,
+    this.focusInset = 0,
     this.onZoneTap,
   });
 
@@ -35,19 +40,70 @@ class OceanMap extends StatefulWidget {
   State<OceanMap> createState() => _OceanMapState();
 }
 
-class _OceanMapState extends State<OceanMap> {
+class _OceanMapState extends State<OceanMap>
+    with SingleTickerProviderStateMixin {
   TransformationController? _controller;
+  // Anima el acercamiento a la zona seleccionada
+  late final AnimationController _move = AnimationController(
+    vsync: this,
+    duration: MotionConstants.mapFocus,
+  );
+  ({ViewTransform from, ViewTransform to})? _moveSpan;
+  // Vista previa a la selección, para volver a ella al cerrar la hoja
+  ViewTransform? _restore;
   Size? _viewport;
   MapProjection? _projection;
   Path? _landPath;
 
-  Size get _worldSize =>
-      Size(_projection!.worldWidth, _projection!.height);
+  Size get _worldSize => Size(_projection!.worldWidth, _projection!.height);
+
+  @override
+  void initState() {
+    super.initState();
+    _move.addListener(_onMove);
+  }
 
   @override
   void dispose() {
+    _move.dispose();
     _controller?.dispose();
     super.dispose();
+  }
+
+  void _onMove() {
+    final span = _moveSpan;
+    final controller = _controller;
+    final viewport = _viewport;
+    if (span == null || controller == null || viewport == null) return;
+
+    final t = MotionConstants.curve.transform(_move.value);
+    controller.value = _toMatrix(
+      clampTransform(
+        ViewTransform(
+          lerpDouble(span.from.scale, span.to.scale, t)!,
+          Offset.lerp(span.from.translation, span.to.translation, t)!,
+        ),
+        _worldSize,
+        viewport,
+      ),
+    );
+  }
+
+  // Lleva la vista a [target], animada salvo con animaciones reducidas o si se pide un salto
+  // (al arrastrar la hoja el mapa sigue al dedo sin retraso)
+  void _moveTo(ViewTransform target, {required bool animate}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final controller = _controller;
+      if (!mounted || controller == null) return;
+
+      _move.stop();
+      if (!animate || MediaQuery.disableAnimationsOf(context)) {
+        controller.value = _toMatrix(target);
+        return;
+      }
+      _moveSpan = (from: _fromMatrix(controller.value), to: target);
+      _move.forward(from: 0);
+    });
   }
 
   @override
@@ -64,8 +120,18 @@ class _OceanMapState extends State<OceanMap> {
           !identical(old.zones, widget.zones)) {
         _applyAfterFrame(_initialTransform());
       }
-    } else if (widget.selectedId != null && widget.selectedId != old.selectedId) {
-      _centerOnSelected();
+    } else if (widget.selectedId != old.selectedId) {
+      if (widget.selectedId != null) {
+        _restore ??= _fromMatrix(_controller!.value);
+        _focusSelected(animate: true);
+      } else if (_restore != null) {
+        final back = _restore!;
+        _restore = null;
+        _moveTo(back, animate: true);
+      }
+    } else if (widget.selectedId != null &&
+        widget.focusInset != old.focusInset) {
+      _focusSelected(animate: false);
     }
   }
 
@@ -137,21 +203,32 @@ class _OceanMapState extends State<OceanMap> {
     );
   }
 
-  void _centerOnSelected() {
+  // Acerca la zona seleccionada y la centra en la parte del mapa que nada tapa
+  void _focusSelected({required bool animate}) {
     final zone = widget.zones
         .where((z) => z.id == widget.selectedId)
         .firstOrNull;
     final controller = _controller;
-    if (zone == null || controller == null) return;
+    final viewport = _viewport;
+    if (zone == null || controller == null || viewport == null) return;
 
     final current = _fromMatrix(controller.value);
-    controller.value = _toMatrix(
+    final free = max(
+      viewport.height - widget.focusInset,
+      MapConstants.minFreeHeight,
+    );
+    _moveTo(
       centerOn(
         worldPoint: _projection!.project(zone.lat, zone.lon),
-        scale: current.scale,
+        scale: min(
+          max(current.scale, MapConstants.focusScale),
+          MapConstants.maxScale,
+        ),
         world: _worldSize,
-        viewport: _viewport!,
+        viewport: viewport,
+        anchor: Offset(viewport.width / 2, free / 2),
       ),
+      animate: animate,
     );
   }
 
@@ -175,7 +252,10 @@ class _OceanMapState extends State<OceanMap> {
   List<ZoneAnchor> _anchors() {
     final projection = _projection!;
     final transform = _fromMatrix(_controller!.value);
-    final maxCount = widget.zones.fold<int>(0, (m, z) => max(m, z.speciesCount));
+    final maxCount = widget.zones.fold<int>(
+      0,
+      (m, z) => max(m, z.speciesCount),
+    );
 
     return [
       for (final zone in widget.zones)
@@ -390,7 +470,10 @@ class _ZonesPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final m = transform.value;
-    final view = ViewTransform(m.storage[0], Offset(m.storage[12], m.storage[13]));
+    final view = ViewTransform(
+      m.storage[0],
+      Offset(m.storage[12], m.storage[13]),
+    );
     final maxCount = zones.fold<int>(0, (a, z) => max(a, z.speciesCount));
 
     final items = [
@@ -409,9 +492,14 @@ class _ZonesPainter extends CustomPainter {
 
     for (final item in items) {
       final lit = _isLit(item.zone);
-      final color = palette.zoneColor(item.zone.id).withValues(
-        alpha: lit ? 1 : MapConstants.compactDimmedAlpha,
+      final selected = item.zone.id == selectedId;
+      // Con una zona seleccionada, las demás se atenúan para que ella destaque
+      final alpha = zoneAlpha(
+        lit: lit,
+        selectedId: selectedId,
+        zoneId: item.zone.id,
       );
+      final color = palette.zoneColor(item.zone.id).withValues(alpha: alpha);
       final glow = item.radius * 1.6;
 
       canvas.drawCircle(
@@ -430,17 +518,27 @@ class _ZonesPainter extends CustomPainter {
       canvas.drawCircle(
         item.center,
         item.radius * MapConstants.coreRadiusFactor,
-        Paint()..color = palette.paper.withValues(alpha: lit ? 0.95 : 0.3),
+        Paint()
+          ..color = palette.paper.withValues(alpha: lit ? 0.95 * alpha : 0.3),
       );
 
-      if (item.zone.id == selectedId) {
+      if (selected) {
+        // Anillo del color de la zona dentro de otro blanco: se ve sobre tierra y sobre mar
         canvas.drawCircle(
           item.center,
           glow,
           Paint()
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 2
+            ..strokeWidth = MapConstants.selectedRingWidth
             ..color = palette.paper,
+        );
+        canvas.drawCircle(
+          item.center,
+          item.radius * MapConstants.coreRadiusFactor * 1.9,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = MapConstants.selectedRingWidth
+            ..color = palette.zoneColor(item.zone.id),
         );
       }
     }
@@ -454,7 +552,10 @@ class _ZonesPainter extends CustomPainter {
     List<({OceanZone zone, Offset center, double radius})> items,
   ) {
     final shadow = [Shadow(color: palette.ink, blurRadius: 4)];
-    final nameStyle = labelStyle.copyWith(color: palette.paper, shadows: shadow);
+    final nameStyle = labelStyle.copyWith(
+      color: palette.paper,
+      shadows: shadow,
+    );
     final countStyle = nameStyle.copyWith(
       fontWeight: FontWeight.w400,
       color: palette.paper.withValues(alpha: 0.85),
@@ -466,13 +567,16 @@ class _ZonesPainter extends CustomPainter {
       textAlign: TextAlign.center,
     )..layout();
 
-    final labelled = <({
-      OceanZone zone,
-      TextPainter full,
-      TextPainter short,
-      Offset center,
-      double radius,
-    })>[];
+    final labelled =
+        <
+          ({
+            OceanZone zone,
+            TextPainter full,
+            TextPainter short,
+            Offset center,
+            double radius,
+          })
+        >[];
 
     for (final item in items) {
       if (!_isLit(item.zone)) continue;
@@ -493,24 +597,19 @@ class _ZonesPainter extends CustomPainter {
     }
 
     // Las zonas con más especies eligen sitio primero
-    labelled.sort(
-      (a, b) => b.zone.speciesCount.compareTo(a.zone.speciesCount),
-    );
+    labelled.sort((a, b) => b.zone.speciesCount.compareTo(a.zone.speciesCount));
 
-    final placements = placeLabels(
-      [
-        for (final l in labelled)
-          LabelRequest(
-            id: l.zone.id,
-            anchor: l.center,
-            radius: l.radius * 1.2,
-            // El mini mapa solo lleva el nombre
-            full: _compact ? l.short.size : l.full.size,
-            short: l.short.size,
-          ),
-      ],
-      bounds: Offset.zero & size,
-    );
+    final placements = placeLabels([
+      for (final l in labelled)
+        LabelRequest(
+          id: l.zone.id,
+          anchor: l.center,
+          radius: l.radius * 1.2,
+          // El mini mapa solo lleva el nombre
+          full: _compact ? l.short.size : l.full.size,
+          short: l.short.size,
+        ),
+    ], bounds: Offset.zero & size);
 
     for (final placement in placements) {
       final l = labelled.firstWhere((e) => e.zone.id == placement.id);

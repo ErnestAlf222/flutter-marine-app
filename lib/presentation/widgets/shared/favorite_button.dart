@@ -8,7 +8,7 @@ import 'package:marine_app/domain/domain.dart';
 import 'package:marine_app/presentation/provider/providers.dart';
 import 'package:marine_app/presentation/widgets/shared/favorite_bubbles.dart';
 
-// Corazón de favorito sobre vidrio: coral solo cuando está marcado, con rebote al marcar
+// Corazón de favorito sobre vidrio: rojo claro solo cuando está marcado, con rebote al marcar
 class FavoriteButton extends ConsumerStatefulWidget {
   final Species species;
   // Permite animar la salida antes de quitar (Favoritos); por defecto quita al instante
@@ -29,9 +29,12 @@ class FavoriteButton extends ConsumerStatefulWidget {
 
 class _FavoriteButtonState extends ConsumerState<FavoriteButton>
     with SingleTickerProviderStateMixin {
+  // Empieza en 1 (tamaño completo): en 0 la escala del rebote parte de 0.5 y el corazón
+  // se veía a la mitad hasta el primer toque
   late final AnimationController _bounce = AnimationController(
     vsync: this,
     duration: MotionConstants.long,
+    value: 1,
   );
 
   @override
@@ -81,7 +84,7 @@ class _FavoriteButtonState extends ConsumerState<FavoriteButton>
       if (added && !MediaQuery.disableAnimationsOf(context)) {
         _bounce.forward(from: 0);
         // Además del rebote, unas burbujas suben desde el corazón
-        FavoriteBubbles.show(context, color: palette.coral);
+        FavoriteBubbles.show(context, color: palette.favorite);
       }
     });
 
@@ -96,7 +99,8 @@ class _FavoriteButtonState extends ConsumerState<FavoriteButton>
             sigmaY: DesignConstants.glassBlur,
           ),
           child: ColoredBox(
-            color: palette.ink.withValues(alpha: DesignConstants.glassAlpha),
+            // Tinte casi sólido: el corazón rojo se lee incluso sobre una foto blanca
+            color: palette.ink.withValues(alpha: DesignConstants.glassSolidAlpha),
             child: SizedBox.square(
               dimension: size,
               child: IconButton(
@@ -106,7 +110,7 @@ class _FavoriteButtonState extends ConsumerState<FavoriteButton>
                 constraints: BoxConstraints.tightFor(width: size, height: size),
                 tooltip: isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos',
                 icon: Icon(Icons.favorite_border, color: palette.paper),
-                selectedIcon: Icon(Icons.favorite, color: palette.coral),
+                selectedIcon: Icon(Icons.favorite, color: palette.favorite),
                 onPressed: () => _toggle(isFavorite),
               ),
             ),

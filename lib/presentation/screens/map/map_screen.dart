@@ -30,27 +30,62 @@ class _MapViewState extends ConsumerState<MapView> {
   String? _selectedId;
   // Evita programar la apertura de la hoja más de una vez por aviso
   bool _openScheduled = false;
+  // Para saber qué parte del mapa tapa la hoja
+  final _mapKey = GlobalKey();
+  double _inset = 0;
+
+  // Cuántos px del borde inferior del mapa tapa una hoja que ocupa [extent] de la pantalla
+  double _insetFor(double extent) {
+    final box = _mapKey.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return 0;
+
+    final mapBottom = box.localToGlobal(Offset.zero).dy + box.size.height;
+    final sheetTop = MediaQuery.sizeOf(context).height * (1 - extent);
+    return (mapBottom - sheetTop).clamp(0.0, box.size.height).toDouble();
+  }
 
   Future<void> _openZone(OceanZone zone) async {
-    setState(() => _selectedId = zone.id);
+    setState(() {
+      _selectedId = zone.id;
+      _inset = _insetFor(MapConstants.sheetInitialFraction);
+    });
 
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       // Cubre también la barra de navegación del shell
       useRootNavigator: true,
-      showDragHandle: true,
+      // El asa va dentro de la hoja (no la de Material, que suma 48 dp fuera de ella): así
+      // la fracción de la pantalla que ocupa la hoja es exactamente la visible
+      // Sin velo: el mapa se sigue viendo, con la zona seleccionada resaltada
+      barrierColor: Colors.transparent,
       backgroundColor: OceanPalette.of(context).abyss,
-      builder: (_) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.6,
-        minChildSize: 0.35,
-        maxChildSize: 0.92,
-        builder: (context, scroll) => _ZoneSheet(zone: zone, scroll: scroll),
+      builder: (_) => NotificationListener<DraggableScrollableNotification>(
+        // Al arrastrar la hoja el mapa vuelve a centrar la zona en lo que queda libre
+        onNotification: (n) {
+          final inset = _insetFor(n.extent);
+          if (mounted && (inset - _inset).abs() > 0.5) {
+            setState(() => _inset = inset);
+          }
+          return false;
+        },
+        child: DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: MapConstants.sheetInitialFraction,
+          minChildSize: MapConstants.sheetInitialFraction,
+          maxChildSize: MapConstants.sheetMaxFraction,
+          snap: true,
+          builder: (context, scroll) => _ZoneSheet(zone: zone, scroll: scroll),
+        ),
       ),
     );
 
-    if (mounted) setState(() => _selectedId = null);
+    if (mounted) {
+      setState(() {
+        _selectedId = null;
+        _inset = 0;
+      });
+    }
   }
 
   // El Detalle puede pedir abrir una zona; se espera a que las zonas estén cargadas
@@ -115,8 +150,9 @@ class _MapViewState extends ConsumerState<MapView> {
           ),
         ),
         SizedBox(
+          key: _mapKey,
           height: panelHeight,
-          child: zones.when(
+          child: zones.whenRetry(
             skipLoadingOnReload: true,
             // Carga centrada: el pez nada en medio del mapa que aún no llega
             loading: () => const Center(child: FishLoader()),
@@ -128,6 +164,7 @@ class _MapViewState extends ConsumerState<MapView> {
               zones: data,
               land: land,
               selectedId: _selectedId,
+              focusInset: _inset,
               onZoneTap: _openZone,
             ),
           ),
@@ -251,6 +288,18 @@ class _ZoneSheet extends StatelessWidget {
         DesignConstants.sectionGap,
       ),
       children: [
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: palette.paper.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: const SizedBox(width: 36, height: 4),
+            ),
+          ),
+        ),
         Row(
           children: [
             DecoratedBox(
@@ -267,26 +316,19 @@ class _ZoneSheet extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           zone.name,
-          style: textTheme.headlineMedium?.copyWith(color: palette.paper),
+          style: textTheme.headlineSmall?.copyWith(color: palette.paper),
         ),
         if (zone.description.isNotEmpty) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(
             zone.description,
-            style: textTheme.bodyLarge?.copyWith(
+            style: textTheme.bodyMedium?.copyWith(
               color: palette.paper.withValues(alpha: 0.9),
-              height: 1.6,
+              height: 1.5,
             ),
           ),
         ],
-        const SizedBox(height: DesignConstants.sectionGap),
-        Text(
-          'ESPECIES DESTACADAS',
-          style: textTheme.overline.copyWith(
-            color: Theme.of(context).colorScheme.primary,
-          ),
-        ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         _TopSpecies(zoneId: zone.id),
       ],
     );
@@ -319,36 +361,39 @@ class _TopSpeciesState extends ConsumerState<_TopSpecies> {
     final species = ref.watch(zoneTopSpeciesProvider(zoneId));
 
     // Nota discreta, no una alarma: es un fallo conocido del servidor
-    Widget note(String text, {VoidCallback? onRetry}) => Row(
-      children: [
-        Icon(
-          Icons.info_outline,
-          size: 18,
-          color: palette.paper.withValues(alpha: 0.7),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: textTheme.bodySmall?.copyWith(
+    Widget note(String text, {VoidCallback? onRetry, bool oneLine = false}) =>
+        Row(
+          children: [
+            Icon(
+              Icons.info_outline,
+              size: 18,
               color: palette.paper.withValues(alpha: 0.7),
             ),
-          ),
-        ),
-        if (onRetry != null)
-          TextButton(
-            style: TextButton.styleFrom(
-              visualDensity: VisualDensity.compact,
-              textStyle: textTheme.labelMedium,
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                text,
+                // Una sola línea cuando hay botón al lado: si no cabe, se recorta con puntos
+                maxLines: oneLine ? 1 : null,
+                overflow: oneLine ? TextOverflow.ellipsis : null,
+                style: textTheme.bodySmall?.copyWith(
+                  color: palette.paper.withValues(alpha: 0.7),
+                ),
+              ),
             ),
-            onPressed: onRetry,
-            child: const Text('Reintentar'),
-          ),
-      ],
-    );
+            if (onRetry != null)
+              TextButton(
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  textStyle: textTheme.labelMedium,
+                ),
+                onPressed: onRetry,
+                child: const Text('Reintentar'),
+              ),
+          ],
+        );
 
-    // Riverpod conserva el error anterior mientras recarga y `when` lo seguiría mostrando:
-    // por eso el estado de carga se comprueba aparte, antes de mirar el resultado
+    // Al reintentar nada el pez; la primera carga conserva los esqueletos de las fichas
     Widget loading() => _retried
         ? const SizedBox(
             height: DesignConstants.zoneTileHeight,
@@ -373,33 +418,45 @@ class _TopSpeciesState extends ConsumerState<_TopSpecies> {
             ),
           );
 
-    if (species.isLoading) return loading();
+    // Con las especies, un encabezado y sus fichas; cuando faltan, una sola línea
+    Widget section(Widget content) => Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'ESPECIES DESTACADAS',
+          style: textTheme.overline.copyWith(
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        content,
+      ],
+    );
 
-    return species.when(
-      loading: loading,
+    return species.whenRetry(
+      loading: () => section(loading()),
       error: (_, _) => _retried
           ? note(ApiConstants.zoneRetryFailedMessage)
-          : note(
-              'Las especies de esta zona no están disponibles por ahora.',
-              onRetry: _retry,
-            ),
+          : note('Destacadas no disponibles.', onRetry: _retry, oneLine: true),
       data: (items) => items.isEmpty
           ? note('Esta zona aún no tiene especies destacadas.')
-          : SizedBox(
-              height: DesignConstants.zoneTileHeight,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: items.length,
-                separatorBuilder: (_, _) =>
-                    const SizedBox(width: DesignConstants.gridGap),
-                itemBuilder: (context, index) => SizedBox(
-                  width: DesignConstants.zoneTileWidth,
-                  child: SpeciesTile(
-                    species: items[index],
-                    aspectRatio:
-                        DesignConstants.zoneTileWidth /
-                        DesignConstants.zoneTileHeight,
-                    onTap: () => openSpecies(context, items[index]),
+          : section(
+              SizedBox(
+                height: DesignConstants.zoneTileHeight,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: items.length,
+                  separatorBuilder: (_, _) =>
+                      const SizedBox(width: DesignConstants.gridGap),
+                  itemBuilder: (context, index) => SizedBox(
+                    width: DesignConstants.zoneTileWidth,
+                    child: SpeciesTile(
+                      species: items[index],
+                      aspectRatio:
+                          DesignConstants.zoneTileWidth /
+                          DesignConstants.zoneTileHeight,
+                      onTap: () => openSpecies(context, items[index]),
+                    ),
                   ),
                 ),
               ),

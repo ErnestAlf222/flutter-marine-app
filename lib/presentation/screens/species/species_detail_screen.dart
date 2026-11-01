@@ -73,7 +73,7 @@ class SpeciesDetailView extends ConsumerWidget {
                 DesignConstants.sectionGap * 2,
               ),
               sliver: SliverToBoxAdapter(
-                child: detail.when(
+                child: detail.whenRetry(
                   skipLoadingOnReload: true,
                   loading: () => const _BodySkeleton(),
                   error: (error, _) => _DetailMessage(

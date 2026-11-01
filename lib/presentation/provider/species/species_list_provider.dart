@@ -96,15 +96,51 @@ class SpeciesListNotifier extends AsyncNotifier<SpeciesListState> {
     }
   }
 
+  // Busca por texto. El servidor distingue acentos, así que si "tiburon" vuelve vacío se
+  // prueba con prefijos más cortos ("tibur") y se queda con lo que coincide sin acentos
+  Future<(List<Species>, bool)> _search(
+    SpeciesRepository repository,
+    String query,
+  ) async {
+    final (items, error) = await repository.searchSpecies(
+      query: query,
+      lang: ApiConstants.appLang,
+    );
+    if (items == null) throw error;
+
+    final capped = items.length >= ApiConstants.searchResultCap;
+    // Con acentos escritos el servidor ya acertó; con resultados no hay nada que arreglar
+    if (items.isNotEmpty || TextUtils.hasDiacritics(query)) return (items, capped);
+
+    final wanted = TextUtils.fold(query);
+    var length = query.length;
+    for (var i = 0; i < ApiConstants.searchFallbackMaxRequests; i++) {
+      length -= ApiConstants.searchFallbackTrim;
+      if (length < ApiConstants.searchFallbackMinLength) break;
+
+      final (shorter, shorterError) = await repository.searchSpecies(
+        query: query.substring(0, length),
+        lang: ApiConstants.appLang,
+      );
+      if (shorter == null) throw shorterError;
+
+      final matches = shorter
+          .where(
+            (s) => TextUtils.fold('${s.commonName} ${s.scientificName}').contains(wanted),
+          )
+          .toList();
+      if (matches.isNotEmpty) {
+        return (matches, shorter.length >= ApiConstants.searchResultCap);
+      }
+    }
+    return (items, capped);
+  }
+
   Future<SpeciesPage> _fetchPage(SpeciesFilters filters, int page) async {
     final repository = ref.read(speciesRepositoryProvider);
 
     if (filters.hasQuery) {
-      final (items, error) = await repository.searchSpecies(
-        query: filters.query.trim(),
-        lang: ApiConstants.appLang,
-      );
-      if (items == null) throw error;
+      final (items, capped) = await _search(repository, filters.query.trim());
 
       // /search no admite filtros: se aplican aquí. Devuelve todo de una vez (hasta su
       // tope de 50), así que se presenta como página única
@@ -115,7 +151,7 @@ class SpeciesListNotifier extends AsyncNotifier<SpeciesListState> {
         perPage: filtered.length,
         total: filtered.length,
         // Si la búsqueda llegó al tope puede haber coincidencias que no se trajeron
-        searchCapped: items.length >= ApiConstants.searchResultCap,
+        searchCapped: capped,
       );
     }
 

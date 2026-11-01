@@ -18,6 +18,20 @@ class MapConstants {
   static const double minScale = 1;
   static const double maxScale = 5;
 
+  // Hoja de una zona: arranca baja para dejar ver el mapa y se arrastra hasta casi toda
+  // la pantalla
+  static const double sheetInitialFraction = 0.30;
+  static const double sheetMaxFraction = 0.85;
+
+  // Al abrir una zona el mapa se acerca a este zoom (si estaba más lejos) y la centra en
+  // la parte que la hoja deja libre. Si la hoja sube tanto que casi no deja mapa, se
+  // centra como si quedaran al menos estos dp libres
+  static const double focusScale = 2.2;
+  static const double minFreeHeight = 40;
+  // Las demás zonas se atenúan mientras hay una seleccionada
+  static const double unselectedAlpha = 0.5;
+  static const double selectedRingWidth = 3;
+
   // Altura del mapa completo como fracción de la pantalla
   static const double panelHeightFraction = 0.42;
   static const double compactHeight = 160;
