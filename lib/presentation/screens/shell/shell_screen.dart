@@ -15,6 +15,10 @@ class ShellScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Leerlo basta para que el catálogo local empiece a sincronizarse con la app
     ref.read(catalogSyncProvider);
+    // Explorar se baraja al volver a la pestaña: el provider necesita saber en cuál se está
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => ref.read(currentTabProvider.notifier).set(navigationShell.currentIndex),
+    );
 
     return Scaffold(
       // El degradado de profundidad vive aquí; las pestañas usan Scaffold transparente

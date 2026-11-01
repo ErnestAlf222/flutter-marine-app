@@ -209,6 +209,18 @@ void main() {
       expect(find.text(CatalogConstants.progress(3, 16)), findsOneWidget);
       expect(find.byType(FishLoader), findsWidgets);
 
+      // Al buscar, el progreso desaparece: solo queda el pez de los resultados
+      final container = ProviderScope.containerOf(tester.element(find.byType(ExploreView)));
+      container.read(speciesFiltersProvider.notifier).setQuery('tiburon');
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.textContaining(CatalogConstants.preparing), findsNothing);
+      expect(find.textContaining(' de 16'), findsNothing);
+
+      // Sin texto vuelve mientras dura la primera sincronización
+      container.read(speciesFiltersProvider.notifier).setQuery('');
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.text(CatalogConstants.progress(3, 16)), findsOneWidget);
+
       catalog.ready = true;
       await catalog.controller.close();
       await tester.pump(const Duration(milliseconds: 50));

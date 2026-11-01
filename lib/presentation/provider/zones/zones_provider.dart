@@ -70,8 +70,8 @@ Stream<ZoneSample> sampleZoneSpecies(
         .take(ApiConstants.zoneSampleMaxDetails)
         .toList();
 
-    var next = 0;
-    var failures = 0;
+    int next = 0;
+    int failures = 0;
 
     // Cada trabajador toma el siguiente candidato en cuanto termina el suyo, así nunca hay
     // más de zoneSampleConcurrency detalles a la vez
@@ -97,7 +97,7 @@ Stream<ZoneSample> sampleZoneSpecies(
     }
 
     await Future.wait([
-      for (var i = 0; i < ApiConstants.zoneSampleConcurrency; i++) worker(),
+      for (int i = 0; i < ApiConstants.zoneSampleConcurrency; i++) worker(),
     ]);
   }
 

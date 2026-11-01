@@ -14,7 +14,7 @@ class FakeUiRepository extends SpeciesRepository {
     : searchCount = searchCount ?? count;
 
   static List<Species> species(int n) => [
-    for (var i = 1; i <= n; i++)
+    for (int i = 1; i <= n; i++)
       Species(
         id: 'id-$i',
         slug: 'especie-$i',

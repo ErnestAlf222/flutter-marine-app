@@ -141,7 +141,7 @@ void main() {
     await _flush(tester);
   });
 
-  testWidgets('los filtros no se desactivan al escribir: la burbuja sigue activa', (tester) async {
+  testWidgets('los filtros no se desactivan al escribir: el botón sigue activo', (tester) async {
     await _pumpApp(tester);
 
     await tester.tap(find.text('Explorar'));
@@ -154,9 +154,9 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    // El filtro activo se ve como chip y la burbuja muestra su número
+    // El filtro activo se ve como chip y el botón extendido muestra su número
     expect(find.text('Corales'), findsOneWidget);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('Filtros · 1'), findsOneWidget);
     await tester.tap(find.byIcon(Icons.tune));
     // La hoja entra deslizándose: se espera a que llegue a su sitio
     await tester.pump();

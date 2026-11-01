@@ -159,7 +159,7 @@ List<GalleryPhoto> _galleryOf(Species? species, SpeciesDetail? detail) {
   final primary = photos.indexWhere((p) => p.isPrimary);
   final ordered = [
     if (primary >= 0) photos[primary],
-    for (var i = 0; i < photos.length; i++)
+    for (int i = 0; i < photos.length; i++)
       if (i != primary) photos[i],
   ];
   return [
@@ -417,7 +417,7 @@ class _DetailBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (var i = 0; i < blocks.length; i++)
+        for (int i = 0; i < blocks.length; i++)
           StaggeredEntry(
             index: i,
             child: Padding(

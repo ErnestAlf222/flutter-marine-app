@@ -78,8 +78,8 @@ class CatalogRepositoryImpl extends CatalogRepository {
       final runId = state.isInProgress && state.runId != 0
           ? state.runId
           : _now().millisecondsSinceEpoch;
-      var page = state.isInProgress ? state.nextPage : 1;
-      var totalPages = state.isInProgress ? state.totalPages : 0;
+      int page = state.isInProgress ? state.nextPage : 1;
+      int totalPages = state.isInProgress ? state.totalPages : 0;
 
       while (totalPages == 0 || page <= totalPages) {
         final (es, esError) = await remote.getSpecies(

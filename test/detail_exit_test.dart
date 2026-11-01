@@ -118,7 +118,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('arrastrar para cerrar', () {
-    var dismissed = 0;
+    int dismissed = 0;
 
     Future<ScrollController> pumpPull(WidgetTester tester, {Widget? over}) async {
       _setScreen(tester);
@@ -163,7 +163,7 @@ void main() {
       await pumpPull(tester);
 
       final gesture = await tester.startGesture(const Offset(180, 300));
-      for (var i = 0; i < 6; i++) {
+      for (int i = 0; i < 6; i++) {
         await gesture.moveBy(const Offset(0, 20));
         await tester.pump(const Duration(milliseconds: 16));
       }
@@ -181,13 +181,13 @@ void main() {
       final scroll = await pumpPull(tester);
 
       final gesture = await tester.startGesture(const Offset(180, 300));
-      for (var i = 0; i < 6; i++) {
+      for (int i = 0; i < 6; i++) {
         await gesture.moveBy(const Offset(0, 20));
         await tester.pump(const Duration(milliseconds: 16));
       }
       expect(scroll.offset, 0);
       // Subir el dedo no desplaza el contenido: primero devuelve la pantalla a su sitio
-      for (var i = 0; i < 3; i++) {
+      for (int i = 0; i < 3; i++) {
         await gesture.moveBy(const Offset(0, -20));
         await tester.pump(const Duration(milliseconds: 16));
       }
@@ -201,7 +201,7 @@ void main() {
 
       final gesture = await tester.startGesture(const Offset(180, 300));
       // 150 px es más de 0.3 del recorrido (320 px)
-      for (var i = 0; i < 10; i++) {
+      for (int i = 0; i < 10; i++) {
         await gesture.moveBy(const Offset(0, 15));
         await tester.pump(const Duration(milliseconds: 16));
       }
@@ -216,7 +216,7 @@ void main() {
       await pumpPull(tester);
 
       final gesture = await tester.startGesture(const Offset(180, 300));
-      for (var i = 0; i < 4; i++) {
+      for (int i = 0; i < 4; i++) {
         await gesture.moveBy(const Offset(0, 10));
         await tester.pump(const Duration(milliseconds: 16));
       }
@@ -258,7 +258,7 @@ void main() {
 
       // Un tirón largo hacia abajo: vuelve al inicio y sigue bajando, pero empezó desplazado
       final gesture = await tester.startGesture(const Offset(180, 200));
-      for (var i = 0; i < 30; i++) {
+      for (int i = 0; i < 30; i++) {
         await gesture.moveBy(const Offset(0, 25));
         await tester.pump(const Duration(milliseconds: 16));
       }
@@ -299,7 +299,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final gesture = await tester.startGesture(const Offset(180, 300));
-      for (var i = 0; i < 8; i++) {
+      for (int i = 0; i < 8; i++) {
         await gesture.moveBy(const Offset(0, 20));
         await tester.pump(const Duration(milliseconds: 16));
       }
@@ -319,7 +319,7 @@ void main() {
       await pumpPull(tester);
 
       final gesture = await tester.startGesture(const Offset(180, 300));
-      for (var i = 0; i < 4; i++) {
+      for (int i = 0; i < 4; i++) {
         await gesture.moveBy(const Offset(0, 10));
         await tester.pump(const Duration(milliseconds: 16));
       }

@@ -6,6 +6,9 @@ class RouteConstants {
   static const String favorites = '/favorites';
   static const String map = '/map';
 
+  // Lugar de cada pestaña en la barra inferior
+  static const int exploreTab = 1;
+
   // El slug identifica la especie en la URL y es el tag del Hero
   static const String speciesParam = 'slug';
   static const String species = '/species/:$speciesParam';

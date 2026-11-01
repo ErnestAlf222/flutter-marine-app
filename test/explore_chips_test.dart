@@ -96,7 +96,7 @@ void main() {
   });
 
   test('el texto de los chips llega a 4.5:1 incluso con una foto blanca detrás', () {
-    final palette = OceanPalette.dark;
+    const palette = OceanPalette.dark;
     final background = Color.alphaBlend(
       palette.ink.withValues(alpha: DesignConstants.glassSolidAlpha),
       Colors.white,

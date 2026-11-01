@@ -147,7 +147,7 @@ void main() {
       final container = _container(repository);
 
       // Varias veces, para cubrir distintas páginas aleatorias
-      for (var i = 0; i < 30; i++) {
+      for (int i = 0; i < 30; i++) {
         repository.calls.clear();
         final species = await container.read(surpriseSpeciesProvider)();
 

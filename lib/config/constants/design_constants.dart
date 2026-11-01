@@ -32,9 +32,19 @@ class DesignConstants {
   static const double detailBackdropDim = 0.3;
   // Botón "Ver completa / Llenar": alto táctil, icono y separación entre icono y texto
   static const double photoToggleHeight = 48;
+  // Opacidad del botón: 55 % dejaba el texto en 4.18:1 contra una foto blanca (3.27:1 en la
+  // esquina que aclara la luz del cristal); con 70 % el peor caso llega a 4.99:1
+  static const double photoToggleAlpha = 0.7;
   static const double photoToggleIcon = 24;
   static const double photoToggleGap = 8;
   static const double photoToggleBottom = 24;
+  // Barrita de posición al recorrer la foto: largo (fracción del ancho), grosor, margen
+  // inferior y opacidad
+  static const double panBarLength = 0.4;
+  static const double panBarThickness = 3;
+  static const double panBarBottom = 10;
+  static const double panBarAlpha = 0.6;
+
   // Galería del Detalle: puntos indicadores arriba y contador "1/3" en cristal
   static const double galleryDot = 8;
   static const double galleryDotGap = 6;
@@ -44,14 +54,6 @@ class DesignConstants {
 
   // Columna de etiquetas de la clasificación (Reino, Filo...)
   static const double taxonomyLabelWidth = 80;
-
-  // Burbuja de filtros: círculo de 56 dp que se pega a un borde y, sin uso, se
-  // minimiza a una pestaña de 24 dp de ancho
-  static const double bubbleSize = 56;
-  static const double bubbleMargin = 12;
-  static const double bubbleTabWidth = 24;
-  // Altura inicial como fracción del recorrido (0 arriba, 1 abajo)
-  static const double bubbleStartY = 0.78;
 
   // Pez cargador: alto por defecto y cuánto más ancho es su recorrido
   static const double fishSize = 40;
@@ -98,8 +100,6 @@ class DesignConstants {
   static const double glassSolidAlpha = 0.85;
   // Texto atenuado sobre ese cristal ("Cualquiera"): sigue llegando a 4.5:1
   static const double glassMutedTextAlpha = 0.75;
-  // Borde de acento de la burbuja: con el tinte oscuro es lo que la separa de un fondo negro
-  static const double bubbleBorderAlpha = 0.9;
 
   // Cabecera de Inicio sobre el héroe: nombre (~28) + espacio + buscador (56) + márgenes
   static const double homeHeaderHeight = 132;

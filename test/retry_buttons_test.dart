@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,6 +28,16 @@ class _Gate<T> {
     calls++;
     return calls == 1 ? Future.value((null, _failure)) : retry.future;
   }
+}
+
+// Semilla fija para que el orden inicial de Explorar sea predecible
+class _FixedSeed extends ExploreSeedNotifier {
+  final int seed;
+
+  _FixedSeed(this.seed);
+
+  @override
+  int build() => seed;
 }
 
 class _GatedRepository extends FakeUiRepository {
@@ -214,7 +226,17 @@ void main() {
         total: 40,
         gateSpeciesIf: (page, perPage, featured) => page == 2,
       );
-      await _pump(tester, const ExploreView(), repository: repository);
+      // La lista empieza en una página al azar según la semilla: se fija una que empiece en la 1
+      int seed = 0;
+      while (Random(seed).nextInt(2) != 0) {
+        seed++;
+      }
+      await _pump(
+        tester,
+        const ExploreView(),
+        repository: repository,
+        overrides: [exploreSeedProvider.overrideWith(() => _FixedSeed(seed))],
+      );
       // La lista entra con un fundido antes de poder desplazarse
       await tester.pump(MotionConstants.medium);
 
@@ -224,7 +246,7 @@ void main() {
       );
       // El pie se construye solo al llegar: se desplaza hasta que aparezca el fallo
       // (se corta en cuanto empieza la carga del pie: seguir arrastrando la repetiría)
-      for (var i = 0; i < 80 && !_footerStarted(); i++) {
+      for (int i = 0; i < 80 && !_footerStarted(); i++) {
         await tester.drag(scroll.last, const Offset(0, -600));
         await tester.pump(const Duration(milliseconds: 50));
       }

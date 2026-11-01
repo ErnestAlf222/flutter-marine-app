@@ -31,6 +31,12 @@ linter:
   # `// ignore_for_file: name_of_lint` syntax on the line or in the file
   # producing the lint.
   rules:
+    # Regla de código: sin la palabra clave de tipo inferido; todo es final o const y lo que
+    # cambia lleva tipo explícito (test/code_style_test.dart cubre lo que el linter no prohíbe)
+    prefer_final_locals: true
+    prefer_final_in_for_each: true
+    prefer_final_fields: true
+    prefer_const_declarations: true
     # avoid_print: false  # Uncomment to disable the `avoid_print` rule
     # prefer_single_quotes: true  # Uncomment to enable the `prefer_single_quotes` rule
 

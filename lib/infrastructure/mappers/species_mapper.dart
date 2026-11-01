@@ -122,7 +122,7 @@ class SpeciesMapper {
 
     // Una caja que cruza el antimeridiano (lon_min > lon_max) se mide por el lado corto
     final east = lonMax < lonMin ? lonMax + 360 : lonMax;
-    var lon = (lonMin + east) / 2;
+    double lon = (lonMin + east) / 2;
     if (lon > 180) lon -= 360;
     return (lat: (latMin + latMax) / 2, lon: lon);
   }

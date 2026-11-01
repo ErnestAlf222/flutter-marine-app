@@ -56,6 +56,8 @@ class DetailGallery extends StatefulWidget {
 
 class _DetailGalleryState extends State<DetailGallery> {
   final _pages = PageController();
+  // La foto y el PageView se ponen de acuerdo en quién recibe cada arrastre horizontal
+  final _panLock = PhotoPanLock();
   late List<PhotoFramingController> _framings = _framingsFor(
     widget.photos.length,
   );
@@ -139,7 +141,7 @@ class _DetailGalleryState extends State<DetailGallery> {
             controller: _pages,
             itemCount: photos.length,
             physics: _several && widget.swipeEnabled
-                ? const PageScrollPhysics()
+                ? PanAwarePagePhysics(lock: _panLock)
                 : const NeverScrollableScrollPhysics(),
             onPageChanged: _changed,
             itemBuilder: (context, i) => DetailPhoto(
@@ -147,6 +149,7 @@ class _DetailGalleryState extends State<DetailGallery> {
               category: widget.category,
               heroTag: i == 0 ? widget.heroTag : null,
               framing: _framings[i],
+              panLock: _panLock,
               provider: widget.providers?[i],
             ),
           ),
@@ -275,7 +278,7 @@ class _Dots extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          for (var i = 0; i < count; i++)
+          for (int i = 0; i < count; i++)
             AnimatedContainer(
               duration: animate ? MotionConstants.short : Duration.zero,
               curve: MotionConstants.curve,

@@ -46,7 +46,7 @@ Future<void> _pump(
 // Deja correr el reloj en pasos cortos para que los temporizadores y animaciones avancen
 Future<void> _wait(WidgetTester tester, Duration total) async {
   const step = Duration(milliseconds: 100);
-  for (var t = Duration.zero; t < total; t += step) {
+  for (Duration t = Duration.zero; t < total; t += step) {
     await tester.pump(step);
   }
 }
@@ -66,7 +66,7 @@ final _step = MotionConstants.heroAutoAdvance + MotionConstants.heroAdvance;
 
 // Cuánto tarda en cambiar de página desde ahora (en pasos de 100 ms)
 Future<Duration> _untilChange(WidgetTester tester, double from) async {
-  var elapsed = Duration.zero;
+  Duration elapsed = Duration.zero;
   while (_page(tester) == from && elapsed < const Duration(seconds: 20)) {
     await tester.pump(const Duration(milliseconds: 100));
     elapsed += const Duration(milliseconds: 100);

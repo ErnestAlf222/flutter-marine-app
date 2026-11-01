@@ -184,7 +184,7 @@ void main() {
     );
 
     test('el aviso de tope sale de los resultados del reintento', () async {
-      final many = [for (var i = 0; i < 60; i++) _species('Tiburón $i')];
+      final many = [for (int i = 0; i < 60; i++) _species('Tiburón $i')];
       final repository = _AccentSensitiveRepository(many);
       final container = _container(repository);
       container.read(speciesFiltersProvider.notifier).setQuery('tiburon');

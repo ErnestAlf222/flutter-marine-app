@@ -171,8 +171,8 @@ void main() {
       ], bounds: bounds);
 
       expect(placements, hasLength(3));
-      for (var i = 0; i < placements.length; i++) {
-        for (var j = i + 1; j < placements.length; j++) {
+      for (int i = 0; i < placements.length; i++) {
+        for (int j = i + 1; j < placements.length; j++) {
           final overlap = placements[i].rect.intersect(placements[j].rect);
           expect(
             overlap.width <= 0 || overlap.height <= 0,

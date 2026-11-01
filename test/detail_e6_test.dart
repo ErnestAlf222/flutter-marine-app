@@ -68,7 +68,7 @@ Color _overWhite(double alpha) =>
 
 // El pez de las fotos que cargan anima sin parar: se avanza el reloj a mano
 Future<void> _settle(WidgetTester tester) async {
-  for (var i = 0; i < 10; i++) {
+  for (int i = 0; i < 10; i++) {
     await tester.pump(const Duration(milliseconds: 100));
   }
 }
@@ -93,7 +93,7 @@ void main() {
         coverage: DesignConstants.detailScrimCoverage,
       );
       final background = _overWhite(alpha);
-      final palette = OceanPalette.dark;
+      const palette = OceanPalette.dark;
       expect(_luminanceContrast(palette.paper, background), greaterThanOrEqualTo(4.5));
       expect(
         _luminanceContrast(

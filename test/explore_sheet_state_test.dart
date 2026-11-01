@@ -215,9 +215,14 @@ void main() {
     });
 
     testWidgets(
-      'al cambiar de pestaña y volver, la lista conserva su posición',
+      'con filtros, al cambiar de pestaña y volver, la lista conserva su posición',
       (tester) async {
         await _pumpApp(tester);
+        // Con filtros no se baraja: el orden no depende de la semilla
+        ProviderScope.containerOf(tester.element(find.byType(ExploreView)))
+            .read(speciesFiltersProvider.notifier)
+            .setCategory('fish');
+        await tester.pump(MotionConstants.medium);
         await _scrollDown(tester);
         final calls = _repository.speciesCalls;
         final offset = _offset(tester);

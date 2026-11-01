@@ -60,7 +60,45 @@ Future<void> _open(WidgetTester tester, ImageProvider provider, {Duration routeT
   await tester.pump();
 }
 
+// Contraste del texto blanco del botón contra una foto blanca: tinta semitransparente y,
+// en la esquina más clara, la luz del cristal encima
+double _toggleContrast({required double tint}) {
+  const palette = OceanPalette.dark;
+  final glass = Color.alphaBlend(palette.ink.withValues(alpha: tint), Colors.white);
+  final lit = Color.alphaBlend(
+    palette.paper.withValues(alpha: DesignConstants.glassLightAlpha),
+    glass,
+  );
+  final l = lit.computeLuminance();
+  return (palette.paper.computeLuminance() + 0.05) / (l + 0.05);
+}
+
 void main() {
+  group('botón discreto', () {
+    test('es semitransparente y su texto llega a 4.5:1 contra una foto blanca', () {
+      expect(DesignConstants.photoToggleAlpha, lessThan(DesignConstants.glassSolidAlpha));
+      final ratio = _toggleContrast(tint: DesignConstants.photoToggleAlpha);
+      // ignore: avoid_print
+      print('CONTRASTE del botón (peor caso): ${ratio.toStringAsFixed(2)}:1');
+      expect(ratio, greaterThanOrEqualTo(4.5));
+      // Con el 55 % pedido al principio no llegaba
+      expect(_toggleContrast(tint: 0.55), lessThan(4.5));
+    });
+
+    testWidgets('sin borde de acento y de 48 dp', (tester) async {
+      final provider = (await tester.runAsync(() => _fakePhoto(768, 1024)))!;
+      await _open(tester, provider);
+      await tester.pump(MotionConstants.short);
+      await tester.pump();
+
+      final surface = tester.widget<GlassSurface>(find.byType(GlassSurface));
+      expect(surface.tintAlpha, DesignConstants.photoToggleAlpha);
+      expect(surface.borderAlpha, 0);
+      expect(surface.borderColor, isNull);
+      expect(tester.getSize(find.byType(GlassSurface)).height, DesignConstants.photoToggleHeight);
+    });
+  });
+
   group('recorte de la foto', () {
     test('una foto igual al marco no pierde nada', () {
       expect(photoCropLoss(imageAspect: 0.8, frameAspect: 0.8), 0);

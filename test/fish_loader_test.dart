@@ -70,7 +70,7 @@ void main() {
       _host(
         Wrap(
           children: [
-            for (var i = 0; i < 20; i++) const FishLoader.small(),
+            for (int i = 0; i < 20; i++) const FishLoader.small(),
           ],
         ),
       ),

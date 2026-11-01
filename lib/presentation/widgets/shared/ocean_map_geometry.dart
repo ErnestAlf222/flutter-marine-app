@@ -12,7 +12,7 @@ import 'package:marine_app/config/constants/map_constants.dart';
 String formatSpeciesCount(int n) {
   final digits = n.abs().toString();
   final buffer = StringBuffer(n < 0 ? '-' : '');
-  for (var i = 0; i < digits.length; i++) {
+  for (int i = 0; i < digits.length; i++) {
     if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
     buffer.write(digits[i]);
   }
@@ -31,7 +31,7 @@ List<Float64List> parseLandGeoJson(String source) {
     for (final ring in polygon) {
       final points = ring as List<dynamic>;
       final flat = Float64List(points.length * 2);
-      for (var i = 0; i < points.length; i++) {
+      for (int i = 0; i < points.length; i++) {
         final p = points[i] as List<dynamic>;
         flat[i * 2] = (p[0] as num).toDouble();
         flat[i * 2 + 1] = (p[1] as num).toDouble();
@@ -202,7 +202,7 @@ String? resolveZoneTap(
   double slop = MapConstants.hitSlop,
 }) {
   String? best;
-  var bestDistance = double.infinity;
+  double bestDistance = double.infinity;
 
   for (final anchor in anchors) {
     final distance = (tap - anchor.center).distance;
@@ -315,7 +315,7 @@ List<LabelPlacement> placeLabels(
   }
 
   double cost(Rect rect, String ownId) {
-    var total = 0.0;
+    double total = 0.0;
     // Pisar otra etiqueta pesa mucho más que tapar un círculo ajeno
     for (final p in placed) {
       total += _overlapArea(rect, p.rect) * 1000;
@@ -328,8 +328,8 @@ List<LabelPlacement> placeLabels(
 
   for (final request in requests) {
     Rect? bestRect;
-    var bestShort = false;
-    var bestCost = double.infinity;
+    bool bestShort = false;
+    double bestCost = double.infinity;
 
     for (final isShort in [false, true]) {
       final size = isShort ? request.short : request.full;
@@ -369,14 +369,14 @@ Path buildLandPath(List<Float64List> rings, MapProjection projection) {
   final path = Path()..fillType = PathFillType.evenOdd;
 
   for (final ring in rings) {
-    var maxLat = -90.0;
-    for (var i = 1; i < ring.length; i += 2) {
+    double maxLat = -90.0;
+    for (int i = 1; i < ring.length; i += 2) {
       maxLat = max(maxLat, ring[i]);
     }
     // Contornos enteros fuera de la franja útil (Antártida) no se dibujan
     if (maxLat < MapConstants.latMin) continue;
 
-    for (var i = 0; i < ring.length; i += 2) {
+    for (int i = 0; i < ring.length; i += 2) {
       final lat = ring[i + 1]
           .clamp(MapConstants.latMin, MapConstants.latMax)
           .toDouble();

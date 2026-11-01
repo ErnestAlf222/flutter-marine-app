@@ -16,9 +16,6 @@ class MotionConstants {
   static const Duration heroAdvance = Duration(milliseconds: 700);
   static const Duration heroResumeDelay = Duration(seconds: 5);
 
-  // Segundos sin tocar la burbuja de filtros antes de minimizarla
-  static const Duration bubbleIdle = Duration(seconds: 4);
-
   // Burbujas que suben desde el corazón al marcar un favorito (duran `long`)
   static const int bubbleCount = 6;
   static const double bubbleRise = 72;
@@ -66,6 +63,17 @@ class MotionConstants {
   static const double pullSlop = 8;
   static const double pullSpringStiffness = 300;
   static const double pullSpringDamping = 0.7;
+
+  // Ampliar la foto (ver completa / llenar y el visor): solo un fundido corto, sin escalas
+  // llamativas ni rebotes
+  static const Duration photoFade = Duration(milliseconds: 200);
+  static const Curve photoFadeCurve = Curves.easeOut;
+
+  // Recorrer la foto en "Llenar": la barrita de posición se desvanece al segundo de soltar y
+  // el arrastre cuenta como horizontal pasados pocos píxeles
+  static const Duration panBarHide = Duration(seconds: 1);
+  static const double panSlop = 6;
+  static const double panMinFling = 50;
 
   // Aviso "Desliza para ver más fotos": cuánto se queda antes de desvanecerse
   static const Duration galleryHint = Duration(seconds: 3);

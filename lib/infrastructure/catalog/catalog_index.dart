@@ -43,12 +43,12 @@ class CatalogIndex {
     final stems = [for (final w in wanted) TextUtils.stem(w)];
     final scored = <({double score, int order, Species species})>[];
 
-    for (var i = 0; i < allowed.length; i++) {
+    for (int i = 0; i < allowed.length; i++) {
       final row = allowed[i];
-      var total = 0.0;
-      var matchedAll = true;
+      double total = 0.0;
+      bool matchedAll = true;
 
-      for (var w = 0; w < wanted.length; w++) {
+      for (int w = 0; w < wanted.length; w++) {
         final score = _wordScore(row, wanted[w], stems[w]);
         if (score == 0) {
           matchedAll = false;
@@ -77,8 +77,8 @@ class CatalogIndex {
     final single = word.length >= ApiConstants.searchStemMinWord && word.endsWith('s')
         ? word.substring(0, word.length - 1)
         : word;
-    final c = CatalogConstants.exactCommonEs;
-    var best = _fieldScore(row.es, word, stem, single, c, CatalogConstants.prefixCommonEs);
+    const c = CatalogConstants.exactCommonEs;
+    double best = _fieldScore(row.es, word, stem, single, c, CatalogConstants.prefixCommonEs);
     if (best >= c) return best;
 
     best = _max(
@@ -115,7 +115,7 @@ class CatalogIndex {
     double exact,
     double prefix,
   ) {
-    var best = 0.0;
+    double best = 0.0;
     for (final w in words) {
       // Palabra completa: igual, o igual una vez quitado el plural ("calamares" ~ "calamar")
       if (w.text == word || w.text == stem || w.text == single || w.stem == stem) {

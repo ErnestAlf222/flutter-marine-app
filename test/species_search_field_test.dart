@@ -13,7 +13,7 @@ Widget _host(Widget child) => MaterialApp(
 void main() {
   testWidgets('muestra la X solo con texto y la X borra', (tester) async {
     final controller = TextEditingController();
-    var cleared = 0;
+    int cleared = 0;
 
     await tester.pumpWidget(
       _host(
@@ -41,7 +41,7 @@ void main() {
   testWidgets('con onTap no toma el foco y avisa del toque', (tester) async {
     final controller = TextEditingController();
     final focusNode = FocusNode();
-    var taps = 0;
+    int taps = 0;
 
     await tester.pumpWidget(
       _host(

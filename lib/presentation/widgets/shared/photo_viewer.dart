@@ -34,10 +34,13 @@ class PhotoViewer extends StatefulWidget {
     required String category,
     int initialIndex = 0,
   }) {
+    // Solo un fundido corto; sin animaciones del sistema, la pantalla aparece sin transición
+    final fade = MediaQuery.disableAnimationsOf(context) ? Duration.zero : MotionConstants.photoFade;
+
     return Navigator.of(context).push(
       PageRouteBuilder<void>(
-        transitionDuration: MotionConstants.medium,
-        reverseTransitionDuration: MotionConstants.short,
+        transitionDuration: fade,
+        reverseTransitionDuration: fade,
         pageBuilder: (_, _, _) => PhotoViewer(
           photos: photos,
           category: category,
@@ -241,6 +244,9 @@ class _ZoomablePhotoState extends State<_ZoomablePhoto> {
         category: widget.category,
         fit: BoxFit.contain,
         cacheWidth: DesignConstants.viewerCacheWidth,
+        // Sin el color del grupo ni su fundido largo: la foto aparece con el mismo fundido corto
+        neutralPlaceholder: true,
+        fade: MotionConstants.photoFade,
       ),
     );
   }

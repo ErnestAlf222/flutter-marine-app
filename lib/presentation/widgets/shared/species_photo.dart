@@ -14,6 +14,12 @@ class SpeciesPhotoView extends StatelessWidget {
   final BoxFit fit;
   // Limita el tamaño decodificado: las fotos originales pueden ser enormes
   final int? cacheWidth;
+  // Fundido con el que entra la foto al cargar
+  final Duration fade;
+  // Mientras carga, fondo neutro en vez del color del grupo (el visor a pantalla completa)
+  final bool neutralPlaceholder;
+  // Qué parte de la foto queda dentro del marco cuando se recorta (cover)
+  final Alignment alignment;
 
   const SpeciesPhotoView({
     super.key,
@@ -21,12 +27,15 @@ class SpeciesPhotoView extends StatelessWidget {
     required this.category,
     this.fit = BoxFit.cover,
     this.cacheWidth = DesignConstants.tilePhotoCacheWidth,
+    this.fade = MotionConstants.short,
+    this.neutralPlaceholder = false,
+    this.alignment = Alignment.center,
   });
 
   @override
   Widget build(BuildContext context) {
     final palette = OceanPalette.of(context);
-    final base = palette.categoryColor(category);
+    final base = neutralPlaceholder ? palette.abyss : palette.categoryColor(category);
 
     // Mientras la foto carga, un pez pequeño nada sobre el color del grupo
     Widget placeholder([IconData? icon, bool loading = false]) => ColoredBox(
@@ -50,12 +59,17 @@ class SpeciesPhotoView extends StatelessWidget {
     return CachedNetworkImage(
       imageUrl: photoUrl,
       fit: fit,
-      alignment: Alignment.center,
+      alignment: alignment,
       width: double.infinity,
       height: double.infinity,
       memCacheWidth: cacheWidth,
-      fadeInDuration: MotionConstants.short,
-      fadeInCurve: MotionConstants.curve,
+      // Con animaciones reducidas la foto entra sin fundido
+      fadeInDuration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : fade,
+      fadeInCurve: neutralPlaceholder ? MotionConstants.photoFadeCurve : MotionConstants.curve,
+      // El visor también acorta la salida del marcador; las tarjetas siguen con la del paquete
+      fadeOutDuration: neutralPlaceholder
+          ? (MediaQuery.disableAnimationsOf(context) ? Duration.zero : fade)
+          : const Duration(milliseconds: 1000),
       placeholder: (_, _) => placeholder(null, true),
       errorWidget: (_, _, _) => placeholder(Icons.broken_image_outlined),
     );

@@ -10,8 +10,6 @@ export 'shared/detail_page_transition.dart';
 export 'shared/detail_photo.dart';
 export 'shared/depth_gauge.dart';
 export 'shared/depth_range_label.dart';
-export 'shared/edge_bubble.dart';
-export 'shared/edge_bubble_geometry.dart';
 export 'shared/favorite_bubbles.dart';
 export 'shared/favorite_button.dart';
 export 'shared/fish_loader.dart';

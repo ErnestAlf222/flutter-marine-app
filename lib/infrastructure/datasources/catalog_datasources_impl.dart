@@ -36,7 +36,7 @@ class CatalogDatasourcesImpl implements CatalogDatasource {
       await db.writeTxn(() async {
         final table = db.catalogSpeciesCollections;
 
-        for (var i = 0; i < items.length; i++) {
+        for (int i = 0; i < items.length; i++) {
           final s = items[i];
           final existing = await table.getBySlug(s.slug);
 

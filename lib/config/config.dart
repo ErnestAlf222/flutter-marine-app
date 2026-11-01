@@ -18,6 +18,7 @@ export 'constants/url_constants.dart';
 export 'utils/coordinate_utils.dart';
 export 'utils/request_priority.dart';
 export 'utils/text_utils.dart';
+export 'utils/zone_stats.dart';
 
 // Router
 export 'router/app_router.dart';

@@ -1,8 +1,11 @@
+import 'dart:math';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:marine_app/config/config.dart';
 import 'package:marine_app/domain/domain.dart';
 import 'package:marine_app/presentation/provider/catalog/catalog_provider.dart';
+import 'package:marine_app/presentation/provider/species/explore_seed_provider.dart';
 import 'package:marine_app/presentation/provider/species/species_filters_provider.dart';
 import 'package:marine_app/presentation/provider/species/species_provider.dart';
 
@@ -46,12 +49,26 @@ class SpeciesListState {
 }
 
 class SpeciesListNotifier extends AsyncNotifier<SpeciesListState> {
+  // Semilla del orden (null si hay texto o filtros) y, sin catálogo, por dónde empieza el
+  // círculo de páginas y cuántas son
+  int? _seed;
+  int _start = 1;
+  int _pages = 1;
+
+  // Explorar sin texto ni filtros: el único caso en que el orden se baraja
+  static bool _isBrowsing(SpeciesFilters f) =>
+      !f.hasQuery && f.query.trim().isEmpty && f.activeCount == 0 && f.zone == null;
+
   // Al cambiar los filtros, build se vuelve a ejecutar y la lista vuelve a la página 1
   @override
   Future<SpeciesListState> build() async {
     final filters = ref.watch(speciesFiltersProvider);
     // Cuando el catálogo local queda listo, la lista se rehace con él
     ref.watch(catalogSyncProvider.select((s) => s.ready));
+    // Sin texto ni filtros el orden se baraja con la semilla; con ellos, la semilla no pinta
+    _seed = _isBrowsing(filters) ? ref.watch(exploreSeedProvider) : null;
+    _start = 1;
+    _pages = 1;
     final page = await _fetchPage(filters, 1);
 
     return SpeciesListState(
@@ -134,7 +151,7 @@ class SpeciesListNotifier extends AsyncNotifier<SpeciesListState> {
     final attempts = <String>{
       if (stemmed != primary) stemmed,
       for (
-        var length = primary.length - ApiConstants.searchFallbackTrim;
+        int length = primary.length - ApiConstants.searchFallbackTrim;
         length >= ApiConstants.searchFallbackMinLength;
         length -= ApiConstants.searchFallbackTrim
       )
@@ -156,6 +173,39 @@ class SpeciesListNotifier extends AsyncNotifier<SpeciesListState> {
     return (items, capped);
   }
 
+  // Sin catálogo: se empieza en una página al azar (según la semilla) y se sigue en círculo
+  // hasta cubrirlas todas, así que no hay especies repetidas. [n] cuenta las páginas ya
+  // pedidas, no el número de página de la API.
+  Future<SpeciesPage> _fetchShuffledPage(
+    SpeciesRepository repository,
+    SpeciesFilters filters,
+    int n,
+    int seed,
+  ) async {
+    Future<SpeciesPage> request(int apiPage) async {
+      final (result, error) = await repository.getSpecies(
+        lang: ApiConstants.appLang,
+        page: apiPage,
+        perPage: ApiConstants.defaultPerPage,
+      );
+      if (result == null) throw error;
+      return result;
+    }
+
+    if (n == 1) {
+      // La primera página da el total; si el azar no elige la 1, se pide la elegida
+      final first = await request(1);
+      _pages = (first.total / ApiConstants.defaultPerPage).ceil().clamp(1, 1 << 20);
+      _start = Random(seed).nextInt(_pages) + 1;
+      final page = _start == 1 ? first : await request(_start);
+      return SpeciesPage(items: page.items, page: 1, perPage: page.perPage, total: page.total);
+    }
+
+    final apiPage = (_start - 1 + (n - 1)) % _pages + 1;
+    final page = await request(apiPage);
+    return SpeciesPage(items: page.items, page: n, perPage: page.perPage, total: page.total);
+  }
+
   Future<SpeciesPage> _fetchPage(SpeciesFilters filters, int page) async {
     // Con el catálogo listo, búsqueda y filtros se resuelven en el dispositivo y sin tope;
     // la zona solo existe en el servidor. Si el catálogo no está, se sigue como siempre
@@ -165,8 +215,11 @@ class SpeciesListNotifier extends AsyncNotifier<SpeciesListState> {
         filter: filters.matches,
       );
       if (local != null) {
+        // Misma semilla, mismo orden: así volver del Detalle o recargar no cambia nada
+        final seed = _seed;
+        final items = seed == null ? local : ([...local]..shuffle(Random(seed)));
         return SpeciesPage(
-          items: local,
+          items: items,
           page: 1,
           perPage: local.length,
           total: local.length,
@@ -175,6 +228,8 @@ class SpeciesListNotifier extends AsyncNotifier<SpeciesListState> {
     }
 
     final repository = ref.read(speciesRepositoryProvider);
+    final seed = _seed;
+    if (seed != null) return _fetchShuffledPage(repository, filters, page, seed);
 
     if (filters.hasQuery) {
       final (items, capped) = await _search(repository, filters.query.trim());

@@ -33,7 +33,7 @@ class _FakeClock {
 
   // Deja correr los eventos pendientes; Dio tarda varios turnos en llegar al interceptor
   Future<void> flush() async {
-    for (var i = 0; i < 10; i++) {
+    for (int i = 0; i < 10; i++) {
       await Future<void>.delayed(Duration.zero);
     }
   }
@@ -54,7 +54,7 @@ RequestLimiter _limiter(
 // Marca cuándo se completa cada petición
 List<bool> _track(List<Future<void>> futures) {
   final done = List.filled(futures.length, false);
-  for (var i = 0; i < futures.length; i++) {
+  for (int i = 0; i < futures.length; i++) {
     futures[i].then((_) => done[i] = true);
   }
   return done;
@@ -97,7 +97,7 @@ void main() {
       final clock = _FakeClock();
       final limiter = _limiter(clock);
 
-      final first = _track([for (var i = 0; i < 90; i++) limiter.acquire()]);
+      final first = _track([for (int i = 0; i < 90; i++) limiter.acquire()]);
       final extra = _track([limiter.acquire()]);
       await clock.flush();
 
@@ -111,7 +111,7 @@ void main() {
       final clock = _FakeClock();
       final limiter = _limiter(clock);
 
-      for (var i = 0; i < 90; i++) {
+      for (int i = 0; i < 90; i++) {
         limiter.acquire();
       }
       final extra = _track([limiter.acquire()]);
@@ -174,7 +174,7 @@ void main() {
       final clock = _FakeClock();
       final limiter = _limiter(clock, threshold: 5, lowThreshold: 3);
 
-      for (var i = 0; i < 3; i++) {
+      for (int i = 0; i < 3; i++) {
         limiter.acquire();
       }
       final low = _track([limiter.acquire(lowPriority: true)]);

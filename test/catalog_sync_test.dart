@@ -4,9 +4,11 @@ import 'package:marine_app/config/config.dart';
 import 'package:marine_app/domain/domain.dart';
 import 'package:marine_app/infrastructure/infrastructure.dart';
 
+import 'support/fake_catalog_datasource.dart';
+
 // 250 especies = 3 páginas de 100 (la última con 50). La página 4 da error, como la 17 real.
 List<Species> _species(int n, {String stamp = 'v1'}) => [
-  for (var i = 0; i < n; i++)
+  for (int i = 0; i < n; i++)
     Species(
       id: 'id-$i',
       slug: 'especie-$i',
@@ -87,77 +89,12 @@ class _FakeRemote implements SpeciesDatasource {
   }) async => (null, 'no se usa');
 }
 
-// Base local en memoria con la misma semántica que la de Isar
-class _FakeLocal implements CatalogDatasource {
-  final rows = <String, _Row>{};
-  CatalogSyncState sync = const CatalogSyncState();
-  int writes = 0;
-
-  @override
-  Future<(List<CatalogEntry>?, String)> loadAll() async {
-    final listed = rows.values.where((r) => r.species != null).toList()
-      ..sort((a, b) => a.position.compareTo(b.position));
-    return ([for (final r in listed) CatalogEntry(species: r.species!, nameEn: r.nameEn)], '');
-  }
-
-  @override
-  Future<(bool?, String)> savePage(
-    List<Species> items, {
-    required String lang,
-    required int firstPosition,
-    required int runId,
-  }) async {
-    for (var i = 0; i < items.length; i++) {
-      final s = items[i];
-      final row = rows.putIfAbsent(s.slug, _Row.new);
-      if (lang == 'en') {
-        row
-          ..nameEn = s.commonName
-          ..runId = runId;
-        continue;
-      }
-      row
-        ..position = firstPosition + i
-        ..runId = runId;
-      // Lo que no cambió en updated_at no se reescribe
-      if (row.species?.updatedAt != s.updatedAt) {
-        row.species = s;
-        writes++;
-      }
-    }
-    return (true, '');
-  }
-
-  @override
-  Future<(int?, String)> removeStale(int runId) async {
-    final stale = rows.entries.where((e) => e.value.runId != runId).map((e) => e.key).toList();
-    stale.forEach(rows.remove);
-    return (stale.length, '');
-  }
-
-  @override
-  Future<(CatalogSyncState?, String)> readSync() async => (sync, '');
-
-  @override
-  Future<(bool?, String)> writeSync(CatalogSyncState state) async {
-    sync = state;
-    return (true, '');
-  }
-}
-
-class _Row {
-  Species? species;
-  String? nameEn;
-  int position = 0;
-  int runId = 0;
-}
-
 Future<List<CatalogProgress>> _runSync(CatalogRepositoryImpl repository) =>
     repository.sync().toList();
 
 void main() {
   late _FakeRemote remote;
-  late _FakeLocal local;
+  late FakeCatalogDatasource local;
   late DateTime now;
 
   CatalogRepositoryImpl build() =>
@@ -165,7 +102,7 @@ void main() {
 
   setUp(() {
     remote = _FakeRemote(_species(250));
-    local = _FakeLocal();
+    local = FakeCatalogDatasource();
     now = DateTime(2026, 11, 1);
   });
 

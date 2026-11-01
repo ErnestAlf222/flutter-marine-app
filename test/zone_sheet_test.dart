@@ -525,8 +525,8 @@ void main() {
 
       // Terminan todos los detalles: el pez se va
       // Los que faltan arrancan según se liberan: se sueltan en rondas
-      for (var round = 0; round < 3; round++) {
-        for (var n = 1; n <= 6; n++) {
+      for (int round = 0; round < 3; round++) {
+        for (int n = 1; n <= 6; n++) {
           if (n.toString() != first.split('-').last) repository.release('especie-$n');
         }
         await tester.pump(const Duration(milliseconds: 50));

@@ -13,17 +13,13 @@ class ExploreScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Transparente para ver el degradado de profundidad del shell
+    // Transparente para ver el degradado de profundidad del shell. El botón de filtros es el
+    // FAB estándar: el cuerpo de esta pantalla termina donde empieza la barra de navegación
+    // del shell, así que nunca queda debajo de ella
     return const Scaffold(
       backgroundColor: Colors.transparent,
-      body: Stack(
-        children: [
-          SafeArea(bottom: false, child: ExploreView()),
-          // La burbuja vive en el cuerpo de esta pantalla, que termina donde empieza la
-          // barra de navegación del shell: nunca queda debajo de ella
-          Positioned.fill(child: _FiltersBubble()),
-        ],
-      ),
+      body: SafeArea(bottom: false, child: ExploreView()),
+      floatingActionButton: _FiltersButton(),
     );
   }
 }
@@ -43,39 +39,41 @@ Future<void> _openFilters(BuildContext context) {
   );
 }
 
-// Burbuja de filtros: se arrastra, se pega al borde y se minimiza sola
-class _FiltersBubble extends ConsumerStatefulWidget {
-  const _FiltersBubble();
+// Botón de filtros: FAB de Material 3 siempre visible y de color sólido (sin cristal ni
+// transparencia). Con filtros aplicados se extiende y dice cuántos son.
+class _FiltersButton extends ConsumerWidget {
+  const _FiltersButton();
 
   @override
-  ConsumerState<_FiltersBubble> createState() => _FiltersBubbleState();
-}
-
-class _FiltersBubbleState extends ConsumerState<_FiltersBubble> {
-  bool _sheetOpen = false;
-
-  Future<void> _open() async {
-    setState(() => _sheetOpen = true);
-    await _openFilters(context);
-    if (mounted) setState(() => _sheetOpen = false);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final placement = ref.watch(filterBubbleProvider);
+  Widget build(BuildContext context, WidgetRef ref) {
     final count = ref.watch(
       speciesFiltersProvider.select((f) => f.activeCount),
     );
+    final scheme = Theme.of(context).colorScheme;
 
-    return EdgeBubble(
-      placement: placement,
-      onPlacementChanged: ref.read(filterBubbleProvider.notifier).update,
-      icon: Icons.tune,
-      badge: count,
-      label: count > 0 ? 'Filtros, $count aplicados' : 'Filtros',
-      pauseIdle: _sheetOpen,
-      onTap: _open,
-    );
+    // primary da 11.3:1 contra el fondo oscuro y 7.7:1 con su texto (primaryContainer
+    // solo llegaba a 2.1:1 contra el fondo)
+    const heroTag = null;
+    void open() => _openFilters(context);
+
+    return count > 0
+        ? FloatingActionButton.extended(
+            heroTag: heroTag,
+            backgroundColor: scheme.primary,
+            foregroundColor: scheme.onPrimary,
+            tooltip: 'Filtros, $count aplicados',
+            icon: const Icon(Icons.tune),
+            label: Text('Filtros · $count'),
+            onPressed: open,
+          )
+        : FloatingActionButton(
+            heroTag: heroTag,
+            backgroundColor: scheme.primary,
+            foregroundColor: scheme.onPrimary,
+            tooltip: 'Filtros',
+            onPressed: open,
+            child: const Icon(Icons.tune),
+          );
   }
 }
 
@@ -196,14 +194,18 @@ class _ExploreViewState extends ConsumerState<ExploreView> {
 }
 
 // Primera sincronización del catálogo: el pez y "x de 16". Mientras tanto la búsqueda usa el
-// servidor. La actualización posterior va en silencio y aquí no se ve.
+// servidor. La actualización posterior va en silencio y aquí no se ve. Durante una búsqueda
+// no se muestra: ahí solo se ve el pez de los resultados, sin números.
 class _CatalogProgress extends ConsumerWidget {
   const _CatalogProgress();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final status = ref.watch(catalogSyncProvider);
-    if (!status.showProgress) return const SizedBox.shrink();
+    final searching = ref.watch(
+      speciesFiltersProvider.select((f) => f.hasQuery),
+    );
+    if (!status.showProgress || searching) return const SizedBox.shrink();
 
     final palette = OceanPalette.of(context);
 
@@ -223,9 +225,8 @@ class _CatalogProgress extends ConsumerWidget {
               status.total == 0
                   ? '${CatalogConstants.preparing}…'
                   : CatalogConstants.progress(status.step, status.total),
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: palette.paper.withValues(alpha: 0.75),
-              ),
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: palette.paper.withValues(alpha: 0.75)),
             ),
           ),
         ],
@@ -299,7 +300,9 @@ class _ActiveFilters extends ConsumerWidget {
             Expanded(
               child: ListView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.only(left: DesignConstants.pagePadding),
+                padding: const EdgeInsets.only(
+                  left: DesignConstants.pagePadding,
+                ),
                 children: [
                   for (final (label, color, onRemove) in shown)
                     _GlassChip(label: label, dot: color, onRemove: onRemove),
@@ -308,9 +311,14 @@ class _ActiveFilters extends ConsumerWidget {
             ),
             // Fijo a la derecha: los demás filtros se ven y se quitan en la hoja
             Padding(
-              padding: const EdgeInsets.only(right: DesignConstants.pagePadding),
+              padding: const EdgeInsets.only(
+                right: DesignConstants.pagePadding,
+              ),
               child: extra > 0
-                  ? _GlassChip(label: '+$extra', onTap: () => _openFilters(context))
+                  ? _GlassChip(
+                      label: '+$extra',
+                      onTap: () => _openFilters(context),
+                    )
                   : const SizedBox(width: DesignConstants.pagePadding),
             ),
           ],
@@ -352,7 +360,10 @@ class _GlassChip extends StatelessWidget {
                 children: [
                   if (dot != null) ...[
                     DecoratedBox(
-                      decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+                      decoration: BoxDecoration(
+                        color: dot,
+                        shape: BoxShape.circle,
+                      ),
                       child: const SizedBox.square(
                         dimension: DesignConstants.filterChipDot,
                       ),
@@ -361,9 +372,8 @@ class _GlassChip extends StatelessWidget {
                   ],
                   Text(
                     label,
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: palette.paper,
-                    ),
+                    style: Theme.of(context).textTheme.labelMedium
+                        ?.copyWith(color: palette.paper),
                   ),
                   if (onRemove != null) ...[
                     const SizedBox(width: 4),
@@ -468,53 +478,65 @@ class _ResultsGridState extends ConsumerState<_ResultsGrid> {
     final state = widget.state;
     final palette = OceanPalette.of(context);
 
-    return CustomScrollView(
-      controller: _scroll,
-      // Al desplazar la lista el teclado se cierra
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(
-            DesignConstants.pagePadding,
-            16,
-            DesignConstants.pagePadding,
-            0,
-          ),
-          sliver: SliverMasonryGrid.count(
-            crossAxisCount: 2,
-            mainAxisSpacing: DesignConstants.gridGap,
-            crossAxisSpacing: DesignConstants.gridGap,
-            childCount: state.items.length,
-            itemBuilder: (context, index) {
-              final species = state.items[index];
-              return StaggeredEntry(
-                // Las páginas siguientes también entran en cascada, no todas con el mismo retraso
-                index: index % ApiConstants.defaultPerPage % 6,
-                child: SpeciesTile(
-                  parallax: true,
-                  species: species,
-                  aspectRatio:
-                      DesignConstants.mosaicAspects[index %
-                          DesignConstants.mosaicAspects.length],
-                  onTap: () => openSpecies(context, species),
-                ),
-              );
-            },
-          ),
-        ),
-        SliverToBoxAdapter(
-          child: Padding(
-            // El margen inferior deja espacio a la burbuja de filtros, que puede quedar al final
+    // Tirar hacia abajo baraja de nuevo (sin texto ni filtros); con ellos solo recarga
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.read(exploreSeedProvider.notifier).reshuffle();
+        try {
+          await ref.read(speciesListProvider.future);
+        } catch (_) {
+          // El error ya se muestra en la pantalla
+        }
+      },
+      child: CustomScrollView(
+        controller: _scroll,
+        physics: const AlwaysScrollableScrollPhysics(),
+        // Al desplazar la lista el teclado se cierra
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        slivers: [
+          SliverPadding(
             padding: const EdgeInsets.fromLTRB(
               DesignConstants.pagePadding,
-              DesignConstants.sectionGap,
+              16,
               DesignConstants.pagePadding,
-              DesignConstants.sectionGap + DesignConstants.fabClearance,
+              0,
             ),
-            child: _footer(context, state, palette),
+            sliver: SliverMasonryGrid.count(
+              crossAxisCount: 2,
+              mainAxisSpacing: DesignConstants.gridGap,
+              crossAxisSpacing: DesignConstants.gridGap,
+              childCount: state.items.length,
+              itemBuilder: (context, index) {
+                final species = state.items[index];
+                return StaggeredEntry(
+                  // Las páginas siguientes también entran en cascada, no todas con el mismo retraso
+                  index: index % ApiConstants.defaultPerPage % 6,
+                  child: SpeciesTile(
+                    parallax: true,
+                    species: species,
+                    aspectRatio:
+                        DesignConstants.mosaicAspects[index %
+                            DesignConstants.mosaicAspects.length],
+                    onTap: () => openSpecies(context, species),
+                  ),
+                );
+              },
+            ),
           ),
-        ),
-      ],
+          SliverToBoxAdapter(
+            child: Padding(
+              // El margen inferior deja espacio al botón de filtros, que flota sobre el final
+              padding: const EdgeInsets.fromLTRB(
+                DesignConstants.pagePadding,
+                DesignConstants.sectionGap,
+                DesignConstants.pagePadding,
+                DesignConstants.sectionGap + DesignConstants.fabClearance,
+              ),
+              child: _footer(context, state, palette),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1145,8 +1167,8 @@ class _StepSlider extends StatelessWidget {
   int get _index {
     final v = value;
     if (v == null) return 0;
-    var best = 0;
-    for (var i = 1; i < steps.length; i++) {
+    int best = 0;
+    for (int i = 1; i < steps.length; i++) {
       if ((steps[i] - v).abs() < (steps[best] - v).abs()) best = i;
     }
     return best;

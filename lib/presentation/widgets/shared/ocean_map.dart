@@ -179,10 +179,10 @@ class _OceanMapState extends State<OceanMap>
       return ViewTransform(1, Offset.zero);
     }
 
-    var lonMin = points.map((z) => z.lon).reduce(min);
-    var lonMax = points.map((z) => z.lon).reduce(max);
-    var latMin = points.map((z) => z.lat).reduce(min);
-    var latMax = points.map((z) => z.lat).reduce(max);
+    double lonMin = points.map((z) => z.lon).reduce(min);
+    double lonMax = points.map((z) => z.lon).reduce(max);
+    double latMin = points.map((z) => z.lat).reduce(min);
+    double latMax = points.map((z) => z.lat).reduce(max);
     lonMin -= MapConstants.compactLonPadding;
     lonMax += MapConstants.compactLonPadding;
     latMin -= MapConstants.compactLatPadding;
@@ -389,7 +389,7 @@ class _ZoneSemantics extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        for (var i = 0; i < anchors.length; i++)
+        for (int i = 0; i < anchors.length; i++)
           Positioned.fromRect(
             rect: Rect.fromCircle(
               center: anchors[i].center,

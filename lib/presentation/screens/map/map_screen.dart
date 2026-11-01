@@ -384,9 +384,8 @@ class _CatalogShare extends StatelessWidget {
       children: [
         Text(
           '${formatSpeciesCount(zone.speciesCount)} de ${formatSpeciesCount(total)} especies',
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: palette.paper,
-          ),
+          style: Theme.of(context).textTheme.labelLarge
+              ?.copyWith(color: palette.paper),
         ),
         const SizedBox(height: 8),
         ClipRRect(
@@ -401,7 +400,9 @@ class _CatalogShare extends StatelessWidget {
                   height: MapConstants.shareBarHeight,
                   width: double.infinity,
                   child: ColoredBox(
-                    color: palette.paper.withValues(alpha: MapConstants.shareTrackAlpha),
+                    color: palette.paper.withValues(
+                      alpha: MapConstants.shareTrackAlpha,
+                    ),
                   ),
                 ),
                 FractionallySizedBox(
@@ -505,19 +506,20 @@ class _TopSpeciesState extends ConsumerState<_TopSpecies> {
           );
 
     // Con las especies, un encabezado y sus fichas; cuando faltan, una sola línea
-    Widget section(Widget content, {String title = 'ESPECIES DESTACADAS'}) => Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: textTheme.overline.copyWith(
-            color: Theme.of(context).colorScheme.primary,
-          ),
-        ),
-        const SizedBox(height: 12),
-        content,
-      ],
-    );
+    Widget section(Widget content, {String title = 'ESPECIES DESTACADAS'}) =>
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: textTheme.overline.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            content,
+          ],
+        );
 
     Widget unavailable() => _retried
         ? note(ApiConstants.zoneRetryFailedMessage)
@@ -528,32 +530,12 @@ class _TopSpeciesState extends ConsumerState<_TopSpecies> {
       List<Species> items, {
       String title = 'ESPECIES DESTACADAS',
       bool loading = false,
-    }) => section(
-      SizedBox(
-        height: DesignConstants.zoneTileHeight,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: items.length + (loading ? 1 : 0),
-          separatorBuilder: (_, _) =>
-              const SizedBox(width: DesignConstants.gridGap),
-          itemBuilder: (context, index) => index == items.length
-              ? const SizedBox(
-                  width: DesignConstants.zoneTileWidth / 2,
-                  child: Center(child: FishLoader()),
-                )
-              : SizedBox(
-                  width: DesignConstants.zoneTileWidth,
-                  child: SpeciesTile(
-                    species: items[index],
-                    aspectRatio:
-                        DesignConstants.zoneTileWidth /
-                        DesignConstants.zoneTileHeight,
-                    onTap: () => openSpecies(context, items[index]),
-                  ),
-                ),
-        ),
-      ),
+      bool official = false,
+    }) => _ZoneInsights(
+      items: items,
       title: title,
+      official: official,
+      loading: loading,
     );
 
     // top-species falla en casi todas las zonas: en su lugar se arma una muestra desde los
@@ -565,9 +547,14 @@ class _TopSpeciesState extends ConsumerState<_TopSpecies> {
       return sample.when(
         skipLoadingOnReload: true,
         loading: () => section(
-          const SizedBox(
-            height: DesignConstants.zoneTileHeight,
-            child: Center(child: FishLoader()),
+          const Column(
+            children: [
+              SizedBox(
+                height: DesignConstants.zoneTileHeight,
+                child: Center(child: FishLoader()),
+              ),
+              _SurpriseButton(onPressed: null),
+            ],
           ),
           title: sampleTitle,
         ),
@@ -578,9 +565,14 @@ class _TopSpeciesState extends ConsumerState<_TopSpecies> {
             return state.done
                 ? unavailable()
                 : section(
-                    const SizedBox(
-                      height: DesignConstants.zoneTileHeight,
-                      child: Center(child: FishLoader()),
+                    const Column(
+                      children: [
+                        SizedBox(
+                          height: DesignConstants.zoneTileHeight,
+                          child: Center(child: FishLoader()),
+                        ),
+                        _SurpriseButton(onPressed: null),
+                      ],
                     ),
                     title: sampleTitle,
                   );
@@ -595,7 +587,294 @@ class _TopSpeciesState extends ConsumerState<_TopSpecies> {
       error: (_, _) => fallback(),
       data: (items) => items.isEmpty
           ? note('Esta zona aún no tiene especies destacadas.')
-          : tiles(items),
+          : tiles(items, official: true),
+    );
+  }
+}
+
+// Lo que se saca de las especies que ya llegaron, sin peticiones extra: récords, grupos,
+// "Sorpréndeme" y la fila de fichas. Los bloques aparecen según llegan las especies.
+class _ZoneInsights extends ConsumerStatefulWidget {
+  final List<Species> items;
+  final String title;
+  // Viene de la lista oficial de destacadas y no de una muestra
+  final bool official;
+  // Faltan detalles por procesar: el pez sigue al final de la fila
+  final bool loading;
+
+  const _ZoneInsights({
+    required this.items,
+    required this.title,
+    required this.official,
+    required this.loading,
+  });
+
+  @override
+  ConsumerState<_ZoneInsights> createState() => _ZoneInsightsState();
+}
+
+class _ZoneInsightsState extends ConsumerState<_ZoneInsights> {
+  // Grupo elegido en los chips; tocarlo otra vez quita el filtro
+  String? _group;
+
+  void _open(Species species) =>
+      ref.read(openSpeciesProvider)(context, species);
+
+  void _surprise() {
+    final items = widget.items;
+    _open(items[ref.read(zoneRandomProvider).nextInt(items.length)]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = OceanPalette.of(context);
+    final textTheme = Theme.of(context).textTheme;
+    final accent = Theme.of(context).colorScheme.primary;
+    final items = widget.items;
+    final records = ZoneStats.records(items);
+    final groups = ZoneStats.groups(items);
+    final shown = ZoneStats.inGroup(items, _group);
+
+    Widget title(String text) => Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Text(
+        text.toUpperCase(),
+        style: textTheme.overline.copyWith(color: accent),
+      ),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.official
+              ? MapConstants.basedOnFeatured(items.length)
+              : MapConstants.basedOnSample(items.length),
+          style: textTheme.bodySmall?.copyWith(
+            color: palette.paper.withValues(alpha: 0.7),
+          ),
+        ),
+        if (!records.isEmpty) ...[
+          const SizedBox(height: 16),
+          title(MapConstants.recordsTitle),
+          _Records(records: records, onOpen: _open),
+        ],
+        const SizedBox(height: 24),
+        title(MapConstants.groupsTitle),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final (id, count) in groups)
+              FilterChip(
+                selected: _group == id,
+                showCheckmark: false,
+                onSelected: (_) =>
+                    setState(() => _group = _group == id ? null : id),
+                avatar: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: palette.categoryColor(id),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const SizedBox.square(dimension: 12),
+                ),
+                label: Text('${CategoryConstants.labels[id] ?? id} $count'),
+                side: BorderSide.none,
+                backgroundColor: palette.deep,
+                selectedColor: palette.categoryColor(id),
+                labelStyle: textTheme.labelLarge?.copyWith(
+                  color: palette.paper,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _SurpriseButton(onPressed: items.isEmpty ? null : _surprise),
+        const SizedBox(height: 24),
+        title(widget.title),
+        SizedBox(
+          height: DesignConstants.zoneTileHeight,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: shown.length + (widget.loading ? 1 : 0),
+            separatorBuilder: (_, _) =>
+                const SizedBox(width: DesignConstants.gridGap),
+            itemBuilder: (context, index) => index == shown.length
+                ? const SizedBox(
+                    width: DesignConstants.zoneTileWidth / 2,
+                    child: Center(child: FishLoader()),
+                  )
+                : SizedBox(
+                    width: DesignConstants.zoneTileWidth,
+                    child: SpeciesTile(
+                      species: shown[index],
+                      aspectRatio:
+                          DesignConstants.zoneTileWidth /
+                          DesignConstants.zoneTileHeight,
+                      onTap: () => _open(shown[index]),
+                    ),
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// Hasta tres tarjetas tocables: la más grande, la que llega más profundo y la más amenazada
+class _Records extends StatelessWidget {
+  final ZoneRecords records;
+  final ValueChanged<Species> onOpen;
+
+  const _Records({required this.records, required this.onOpen});
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = OceanPalette.of(context);
+    final largest = records.largest;
+    final deepest = records.deepest;
+    final threatened = records.mostThreatened;
+
+    final cards = <Widget>[
+      if (largest != null)
+        _RecordCard(
+          label: MapConstants.recordLargest,
+          species: largest,
+          value: SizeBar.format(largest.sizeMaxCm!),
+          color: palette.paper,
+          onTap: () => onOpen(largest),
+        ),
+      if (deepest != null)
+        _RecordCard(
+          label: MapConstants.recordDeepest,
+          species: deepest,
+          value: '${formatSpeciesCount(deepest.depthMaxM!.round())} m',
+          color: palette.paper,
+          onTap: () => onOpen(deepest),
+        ),
+      if (threatened != null)
+        _RecordCard(
+          label: MapConstants.recordThreatened,
+          species: threatened,
+          value:
+              ConservationConstants.labels[threatened.conservationStatus] ??
+              threatened.conservationStatus!,
+          color: palette.uicnColor(threatened.conservationStatus),
+          onTap: () => onOpen(threatened),
+        ),
+    ];
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (int i = 0; i < cards.length; i++) ...[
+          if (i > 0) const SizedBox(width: MapConstants.recordCardGap),
+          Expanded(child: cards[i]),
+        ],
+        // Con menos de tres tarjetas, el resto del ancho queda libre para que no se estiren
+        for (int i = cards.length; i < 3; i++) ...[
+          const SizedBox(width: MapConstants.recordCardGap),
+          const Spacer(),
+        ],
+      ],
+    );
+  }
+}
+
+class _RecordCard extends StatelessWidget {
+  final String label;
+  final Species species;
+  final String value;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _RecordCard({
+    required this.label,
+    required this.species,
+    required this.value,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = OceanPalette.of(context);
+    final textTheme = Theme.of(context).textTheme;
+    final radius = BorderRadius.circular(DesignConstants.tileRadius);
+
+    return Semantics(
+      button: true,
+      label: '$label: ${species.commonName}, $value',
+      child: ClipRRect(
+        borderRadius: radius,
+        child: Material(
+          color: palette.deep,
+          child: InkWell(
+            onTap: onTap,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  height: MapConstants.recordCardPhotoHeight,
+                  width: double.infinity,
+                  child: SpeciesPhotoView(
+                    url: species.primaryPhoto,
+                    category: species.category,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label.toUpperCase(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.overline.copyWith(
+                          color: palette.paper.withValues(alpha: 0.7),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        species.commonName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.labelLarge?.copyWith(
+                          color: palette.paper,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        value,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.labelMedium?.copyWith(color: color),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// "Sorpréndeme en esta zona": deshabilitado hasta que llegue al menos una especie
+class _SurpriseButton extends StatelessWidget {
+  final VoidCallback? onPressed;
+
+  const _SurpriseButton({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton.tonalIcon(
+      icon: const Icon(Icons.casino_outlined),
+      label: const Text(MapConstants.surpriseLabel),
+      onPressed: onPressed,
     );
   }
 }

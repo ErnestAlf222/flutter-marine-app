@@ -81,7 +81,7 @@ Future<void> _swipeLeft(WidgetTester tester) async {
 void main() {
   group('galería con una sola foto', () {
     testWidgets('se ve como siempre: sin puntos, contador ni aviso, y sin deslizar', (tester) async {
-      final photo = await _fakePhoto(tester, 768, 1024);
+      final photo = await _fakePhoto(tester, 600, 1200);
       await _pumpGallery(tester, providers: [photo], showHint: true);
 
       expect(find.text('1/1'), findsNothing);
@@ -99,7 +99,7 @@ void main() {
 
   group('galería con varias fotos', () {
     testWidgets('puntos, contador "1/3" y deslizamiento entre fotos', (tester) async {
-      final photo = await _fakePhoto(tester, 768, 1024);
+      final photo = await _fakePhoto(tester, 600, 1200);
       final changes = <int>[];
       await _pumpGallery(tester, providers: [photo, photo, photo], onPageChanged: changes.add);
 
@@ -116,7 +116,7 @@ void main() {
     });
 
     testWidgets('los textos de abajo son fijos: no se mueven al deslizar', (tester) async {
-      final photo = await _fakePhoto(tester, 768, 1024);
+      final photo = await _fakePhoto(tester, 600, 1200);
       await _pumpGallery(tester, providers: [photo, photo]);
 
       final before = tester.getTopLeft(find.text('NOMBRE'));
@@ -126,7 +126,7 @@ void main() {
     });
 
     testWidgets('solo la primera foto lleva el Hero', (tester) async {
-      final photo = await _fakePhoto(tester, 768, 1024);
+      final photo = await _fakePhoto(tester, 600, 1200);
       await _pumpGallery(tester, providers: [photo, photo, photo]);
 
       final heroes = tester.widgetList<Hero>(find.byType(Hero)).toList();
@@ -135,7 +135,7 @@ void main() {
     });
 
     testWidgets('el botón de ver completa aplica a la foto actual', (tester) async {
-      final square = await _fakePhoto(tester, 1000, 1000);
+      final square = await _fakePhoto(tester, 600, 1200);
       final panorama = await _fakePhoto(tester, 1600, 900);
       await _pumpGallery(tester, providers: [square, panorama]);
 
@@ -160,7 +160,7 @@ void main() {
     });
 
     testWidgets('con el Detalle arrastrándose para cerrar no se desliza entre fotos', (tester) async {
-      final photo = await _fakePhoto(tester, 768, 1024);
+      final photo = await _fakePhoto(tester, 600, 1200);
       await _pumpGallery(tester, providers: [photo, photo], swipeEnabled: false);
 
       await tester.drag(find.byType(PageView), const Offset(-300, 0));
@@ -172,8 +172,8 @@ void main() {
 
   group('aviso "Desliza para ver más fotos"', () {
     testWidgets('sale, se desvanece a los 3 s y avisa una sola vez', (tester) async {
-      final photo = await _fakePhoto(tester, 768, 1024);
-      var shown = 0;
+      final photo = await _fakePhoto(tester, 600, 1200);
+      int shown = 0;
       await _pumpGallery(
         tester,
         providers: [photo, photo],
@@ -198,14 +198,14 @@ void main() {
     });
 
     testWidgets('si ya se mostró antes, no sale', (tester) async {
-      final photo = await _fakePhoto(tester, 768, 1024);
+      final photo = await _fakePhoto(tester, 600, 1200);
       await _pumpGallery(tester, providers: [photo, photo]);
 
       expect(find.text(DetailConstants.swipeHint), findsNothing);
     });
 
     testWidgets('deslizar lo quita antes de tiempo', (tester) async {
-      final photo = await _fakePhoto(tester, 768, 1024);
+      final photo = await _fakePhoto(tester, 600, 1200);
       await _pumpGallery(tester, providers: [photo, photo], showHint: true);
       expect(find.text(DetailConstants.swipeHint), findsOneWidget);
 
@@ -219,7 +219,7 @@ void main() {
       tester.platformDispatcher.accessibilityFeaturesTestValue =
           const FakeAccessibilityFeatures(disableAnimations: true);
       addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
-      final photo = await _fakePhoto(tester, 768, 1024);
+      final photo = await _fakePhoto(tester, 600, 1200);
       await _pumpGallery(tester, providers: [photo, photo], showHint: true);
       expect(find.text(DetailConstants.swipeHint), findsOneWidget);
 
@@ -230,12 +230,12 @@ void main() {
   });
 
   group('con arrastrar hacia abajo para cerrar', () {
-    var dismissed = 0;
+    int dismissed = 0;
 
     Future<void> pumpPull(WidgetTester tester) async {
       _setScreen(tester);
       dismissed = 0;
-      final photo = await _fakePhoto(tester, 768, 1024);
+      final photo = await _fakePhoto(tester, 600, 1200);
 
       await tester.pumpWidget(
         _app(
@@ -276,7 +276,7 @@ void main() {
 
       // Un deslizamiento con algo de caída, como el de un dedo real
       final gesture = await tester.startGesture(const Offset(300, 200));
-      for (var i = 0; i < 10; i++) {
+      for (int i = 0; i < 10; i++) {
         await gesture.moveBy(const Offset(-30, 2));
         await tester.pump(const Duration(milliseconds: 16));
       }
@@ -292,7 +292,7 @@ void main() {
       await pumpPull(tester);
 
       final gesture = await tester.startGesture(const Offset(180, 200));
-      for (var i = 0; i < 10; i++) {
+      for (int i = 0; i < 10; i++) {
         await gesture.moveBy(const Offset(0, 15));
         await tester.pump(const Duration(milliseconds: 16));
       }
@@ -317,7 +317,7 @@ void main() {
           child: _app(const SpeciesDetailView(slug: 'especie-1')),
         ),
       );
-      for (var i = 0; i < 6; i++) {
+      for (int i = 0; i < 6; i++) {
         await tester.pump(const Duration(milliseconds: 100));
       }
 
@@ -326,11 +326,11 @@ void main() {
 
       Future<void> openCredits() async {
         await tester.drag(find.byType(CustomScrollView), const Offset(0, -1500));
-        for (var i = 0; i < 6; i++) {
+        for (int i = 0; i < 6; i++) {
           await tester.pump(const Duration(milliseconds: 100));
         }
         await tester.tap(find.text(DetailConstants.creditsButton));
-        for (var i = 0; i < 6; i++) {
+        for (int i = 0; i < 6; i++) {
           await tester.pump(const Duration(milliseconds: 100));
         }
       }
@@ -338,7 +338,7 @@ void main() {
       await openCredits();
       expect(find.text('© Autor Principal'), findsOneWidget);
       await tester.tapAt(const Offset(180, 20));
-      for (var i = 0; i < 6; i++) {
+      for (int i = 0; i < 6; i++) {
         await tester.pump(const Duration(milliseconds: 100));
       }
 
@@ -347,7 +347,7 @@ void main() {
 
       // Desliza a la segunda foto
       await tester.drag(find.byType(PageView), const Offset(-300, 0));
-      for (var i = 0; i < 10; i++) {
+      for (int i = 0; i < 10; i++) {
         await tester.pump(const Duration(milliseconds: 100));
       }
       expect(find.text('2/2'), findsOneWidget);
@@ -374,7 +374,7 @@ void main() {
           ),
         ),
       );
-      for (var i = 0; i < 4; i++) {
+      for (int i = 0; i < 4; i++) {
         await tester.pump(const Duration(milliseconds: 100));
       }
     }
@@ -391,7 +391,7 @@ void main() {
       expect(find.text('© Uno'), findsOneWidget);
 
       await tester.drag(find.byType(PageView), const Offset(-300, 0));
-      for (var i = 0; i < 10; i++) {
+      for (int i = 0; i < 10; i++) {
         await tester.pump(const Duration(milliseconds: 100));
       }
 
@@ -408,7 +408,7 @@ void main() {
       await tester.pump();
 
       await tester.drag(find.byType(PageView), const Offset(-300, 0));
-      for (var i = 0; i < 10; i++) {
+      for (int i = 0; i < 10; i++) {
         await tester.pump(const Duration(milliseconds: 100));
       }
 
@@ -425,7 +425,7 @@ void main() {
       await tester.pump();
 
       await tester.drag(find.byType(PageView), const Offset(-300, 0));
-      for (var i = 0; i < 10; i++) {
+      for (int i = 0; i < 10; i++) {
         await tester.pump(const Duration(milliseconds: 100));
       }
 
