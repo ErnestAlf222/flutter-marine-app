@@ -5,7 +5,8 @@ import 'package:marine_app/domain/domain.dart';
 typedef _Word = ({String text, String stem});
 
 List<_Word> _wordsOf(String? text) => [
-  for (final w in TextUtils.words(text ?? '')) (text: w, stem: TextUtils.stem(w)),
+  for (final w in TextUtils.words(text ?? ''))
+    (text: w, stem: TextUtils.stem(w)),
 ];
 
 class _Row {
@@ -27,7 +28,8 @@ class _Row {
 class CatalogIndex {
   final List<_Row> _rows;
 
-  CatalogIndex(List<CatalogEntry> entries) : _rows = entries.map(_Row.new).toList();
+  CatalogIndex(List<CatalogEntry> entries)
+    : _rows = entries.map(_Row.new).toList();
 
   int get length => _rows.length;
 
@@ -74,11 +76,19 @@ class CatalogIndex {
   double _wordScore(_Row row, String word, String stem) {
     // "ces" -> "z" acierta con peces/pez pero falla con alces/alce: también se prueba
     // quitar solo la s
-    final single = word.length >= ApiConstants.searchStemMinWord && word.endsWith('s')
+    final single =
+        word.length >= ApiConstants.searchStemMinWord && word.endsWith('s')
         ? word.substring(0, word.length - 1)
         : word;
     const c = CatalogConstants.exactCommonEs;
-    double best = _fieldScore(row.es, word, stem, single, c, CatalogConstants.prefixCommonEs);
+    double best = _fieldScore(
+      row.es,
+      word,
+      stem,
+      single,
+      c,
+      CatalogConstants.prefixCommonEs,
+    );
     if (best >= c) return best;
 
     best = _max(
@@ -118,11 +128,16 @@ class CatalogIndex {
     double best = 0.0;
     for (final w in words) {
       // Palabra completa: igual, o igual una vez quitado el plural ("calamares" ~ "calamar")
-      if (w.text == word || w.text == stem || w.text == single || w.stem == stem) {
+      if (w.text == word ||
+          w.text == stem ||
+          w.text == single ||
+          w.stem == stem) {
         return exact;
       }
       if (best < prefix &&
-          (w.text.startsWith(stem) || w.text.startsWith(word) || w.text.startsWith(single))) {
+          (w.text.startsWith(stem) ||
+              w.text.startsWith(word) ||
+              w.text.startsWith(single))) {
         best = prefix;
       }
     }

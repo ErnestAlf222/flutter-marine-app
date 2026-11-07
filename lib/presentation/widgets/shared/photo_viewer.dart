@@ -35,7 +35,9 @@ class PhotoViewer extends StatefulWidget {
     int initialIndex = 0,
   }) {
     // Solo un fundido corto; sin animaciones del sistema, la pantalla aparece sin transición
-    final fade = MediaQuery.disableAnimationsOf(context) ? Duration.zero : MotionConstants.photoFade;
+    final fade = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : MotionConstants.photoFade;
 
     return Navigator.of(context).push(
       PageRouteBuilder<void>(

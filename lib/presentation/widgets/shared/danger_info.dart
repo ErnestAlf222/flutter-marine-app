@@ -36,11 +36,16 @@ class DangerInfo extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 DecoratedBox(
-                  decoration: BoxDecoration(color: background, shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                    color: background,
+                    shape: BoxShape.circle,
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.all(10),
                     child: Icon(
-                      alert ? Icons.warning_amber_rounded : Icons.check_circle_outline,
+                      alert
+                          ? Icons.warning_amber_rounded
+                          : Icons.check_circle_outline,
                       size: 24,
                       color: palette.onColor(background),
                     ),
@@ -60,7 +65,9 @@ class DangerInfo extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         name,
-                        style: textTheme.titleMedium?.copyWith(color: palette.paper),
+                        style: textTheme.titleMedium?.copyWith(
+                          color: palette.paper,
+                        ),
                       ),
                       if (phrase != null) ...[
                         const SizedBox(height: 4),

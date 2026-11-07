@@ -9,6 +9,7 @@ import 'package:marine_app/presentation/provider/providers.dart';
 import 'package:marine_app/presentation/screens/screens.dart';
 import 'package:marine_app/presentation/widgets/shared/photo_scrim.dart';
 
+import 'support/fake_offline.dart';
 import 'support/fake_ui_repository.dart';
 
 // Repositorio con un detalle completo: taxonomía con "incertae sedis" y crédito de foto
@@ -120,7 +121,7 @@ void main() {
       await tester.pumpWidget(
         _host(
           const SpeciesDetailView(slug: 'especie-1'),
-          overrides: [speciesRepositoryProvider.overrideWithValue(_DetailRepo())],
+          overrides: [...offlineOverrides(), speciesRepositoryProvider.overrideWithValue(_DetailRepo())],
         ),
       );
       await tester.pump();
@@ -192,7 +193,7 @@ void main() {
               category: 'fish',
             ),
           ),
-          overrides: [speciesRepositoryProvider.overrideWithValue(FakeUiRepository())],
+          overrides: [...offlineOverrides(), speciesRepositoryProvider.overrideWithValue(FakeUiRepository())],
         ),
       );
       await tester.pump();

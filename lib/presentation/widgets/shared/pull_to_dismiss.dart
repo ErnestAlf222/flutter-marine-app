@@ -20,7 +20,11 @@ class PullToDismiss extends StatefulWidget {
   )
   builder;
 
-  const PullToDismiss({super.key, required this.onDismiss, required this.builder});
+  const PullToDismiss({
+    super.key,
+    required this.onDismiss,
+    required this.builder,
+  });
 
   @override
   State<PullToDismiss> createState() => _PullToDismissState();
@@ -29,8 +33,9 @@ class PullToDismiss extends StatefulWidget {
 class _PullToDismissState extends State<PullToDismiss>
     with SingleTickerProviderStateMixin {
   final _scroll = ScrollController();
-  late final AnimationController _spring = AnimationController.unbounded(vsync: this)
-    ..addListener(() => setState(() => _drag = _spring.value));
+  late final AnimationController _spring = AnimationController.unbounded(
+    vsync: this,
+  )..addListener(() => setState(() => _drag = _spring.value));
 
   double _drag = 0;
   bool _engaged = false;
@@ -56,7 +61,8 @@ class _PullToDismissState extends State<PullToDismiss>
     _spring.stop();
     _startedAtTop = _atTop;
     _travel = Offset.zero;
-    _tracker = VelocityTracker.withKind(e.kind)..addPosition(e.timeStamp, e.position);
+    _tracker = VelocityTracker.withKind(e.kind)
+      ..addPosition(e.timeStamp, e.position);
   }
 
   void _move(PointerMoveEvent e) {
@@ -73,7 +79,8 @@ class _PullToDismissState extends State<PullToDismiss>
         _travel.dx + e.delta.dx,
         (_travel.dy + e.delta.dy).clamp(0, double.infinity),
       );
-      if (_travel.dy > MotionConstants.pullSlop && _travel.dy > _travel.dx.abs()) {
+      if (_travel.dy > MotionConstants.pullSlop &&
+          _travel.dy > _travel.dx.abs()) {
         setState(() => _engaged = true);
       }
       return;
@@ -133,7 +140,9 @@ class _PullToDismissState extends State<PullToDismiss>
           child: Transform.scale(
             scale: scale,
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(DesignConstants.cardRadius * progress),
+              borderRadius: BorderRadius.circular(
+                DesignConstants.cardRadius * progress,
+              ),
               clipBehavior: _drag > 0 ? Clip.antiAlias : Clip.none,
               child: widget.builder(
                 context,

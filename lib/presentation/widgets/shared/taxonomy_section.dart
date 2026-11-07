@@ -20,7 +20,8 @@ class _TaxonomySectionState extends State<TaxonomySection> {
   // Etiqueta y valor; los rangos sin dato no se muestran
   List<(String, String)> _rows(List<(String, String?)> ranks) => [
     for (final (label, value) in ranks)
-      if (value != null && value.trim().isNotEmpty) (label, _readable(value.trim())),
+      if (value != null && value.trim().isNotEmpty)
+        (label, _readable(value.trim())),
   ];
 
   // "incertae sedis" es latín técnico: se aclara en español

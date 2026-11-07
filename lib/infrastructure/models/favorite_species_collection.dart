@@ -20,4 +20,8 @@ class FavoriteSpeciesCollection {
 
   // Define el orden de la cuadrícula: la más reciente primero
   late DateTime savedAt;
+
+  // Ficha completa (SpeciesDetail en JSON) para abrir el Detalle sin conexión. Es null en los
+  // favoritos guardados antes de existir esta copia: se completan al abrir la app.
+  String? detailJson;
 }

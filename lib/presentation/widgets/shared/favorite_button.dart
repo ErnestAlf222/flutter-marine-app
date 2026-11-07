@@ -80,7 +80,9 @@ class _FavoriteButtonState extends ConsumerState<FavoriteButton>
       final before = previous?.asData?.value;
       final after = next.asData?.value;
       if (before == null || after == null) return;
-      final added = !before.any((s) => s.slug == slug) && after.any((s) => s.slug == slug);
+      final added =
+          !before.any((s) => s.slug == slug) &&
+          after.any((s) => s.slug == slug);
       if (added && !MediaQuery.disableAnimationsOf(context)) {
         _bounce.forward(from: 0);
         // Además del rebote, unas burbujas suben desde el corazón
@@ -100,7 +102,9 @@ class _FavoriteButtonState extends ConsumerState<FavoriteButton>
           ),
           child: ColoredBox(
             // Tinte casi sólido: el corazón rojo se lee incluso sobre una foto blanca
-            color: palette.ink.withValues(alpha: DesignConstants.glassSolidAlpha),
+            color: palette.ink.withValues(
+              alpha: DesignConstants.glassSolidAlpha,
+            ),
             child: SizedBox.square(
               dimension: size,
               child: IconButton(
@@ -108,7 +112,9 @@ class _FavoriteButtonState extends ConsumerState<FavoriteButton>
                 iconSize: iconSize,
                 padding: EdgeInsets.zero,
                 constraints: BoxConstraints.tightFor(width: size, height: size),
-                tooltip: isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos',
+                tooltip: isFavorite
+                    ? 'Quitar de favoritos'
+                    : 'Agregar a favoritos',
                 icon: Icon(Icons.favorite_border, color: palette.paper),
                 selectedIcon: Icon(Icons.favorite, color: palette.favorite),
                 onPressed: () => _toggle(isFavorite),

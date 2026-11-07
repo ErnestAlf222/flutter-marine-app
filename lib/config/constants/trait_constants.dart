@@ -108,7 +108,8 @@ class TraitConstants {
   // La API no define qué significan exactamente estos niveles, así que se presentan como
   // su clasificación y no como una instrucción de seguridad
   static const Map<String, String> dangerPhrases = {
-    'harmless': 'Según speCies.blue, es inofensiva. Aun así, observa sin tocar.',
+    'harmless':
+        'Según speCies.blue, es inofensiva. Aun así, observa sin tocar.',
     'caution': 'Según speCies.blue, requiere precaución. Observa sin tocar.',
     'venomous': 'Según speCies.blue, es venenosa. Observa sin tocar.',
   };

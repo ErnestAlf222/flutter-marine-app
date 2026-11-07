@@ -33,24 +33,29 @@ const FavoriteSpeciesCollectionSchema = CollectionSchema(
       name: r'conservationStatus',
       type: IsarType.string,
     ),
-    r'primaryPhoto': PropertySchema(
+    r'detailJson': PropertySchema(
       id: 3,
+      name: r'detailJson',
+      type: IsarType.string,
+    ),
+    r'primaryPhoto': PropertySchema(
+      id: 4,
       name: r'primaryPhoto',
       type: IsarType.string,
     ),
     r'savedAt': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'savedAt',
       type: IsarType.dateTime,
     ),
     r'scientificName': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'scientificName',
       type: IsarType.string,
     ),
-    r'slug': PropertySchema(id: 6, name: r'slug', type: IsarType.string),
+    r'slug': PropertySchema(id: 7, name: r'slug', type: IsarType.string),
     r'speciesId': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'speciesId',
       type: IsarType.string,
     ),
@@ -100,6 +105,12 @@ int _favoriteSpeciesCollectionEstimateSize(
     }
   }
   {
+    final value = object.detailJson;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
     final value = object.primaryPhoto;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
@@ -120,11 +131,12 @@ void _favoriteSpeciesCollectionSerialize(
   writer.writeString(offsets[0], object.category);
   writer.writeString(offsets[1], object.commonName);
   writer.writeString(offsets[2], object.conservationStatus);
-  writer.writeString(offsets[3], object.primaryPhoto);
-  writer.writeDateTime(offsets[4], object.savedAt);
-  writer.writeString(offsets[5], object.scientificName);
-  writer.writeString(offsets[6], object.slug);
-  writer.writeString(offsets[7], object.speciesId);
+  writer.writeString(offsets[3], object.detailJson);
+  writer.writeString(offsets[4], object.primaryPhoto);
+  writer.writeDateTime(offsets[5], object.savedAt);
+  writer.writeString(offsets[6], object.scientificName);
+  writer.writeString(offsets[7], object.slug);
+  writer.writeString(offsets[8], object.speciesId);
 }
 
 FavoriteSpeciesCollection _favoriteSpeciesCollectionDeserialize(
@@ -137,12 +149,13 @@ FavoriteSpeciesCollection _favoriteSpeciesCollectionDeserialize(
   object.category = reader.readString(offsets[0]);
   object.commonName = reader.readString(offsets[1]);
   object.conservationStatus = reader.readStringOrNull(offsets[2]);
+  object.detailJson = reader.readStringOrNull(offsets[3]);
   object.id = id;
-  object.primaryPhoto = reader.readStringOrNull(offsets[3]);
-  object.savedAt = reader.readDateTime(offsets[4]);
-  object.scientificName = reader.readString(offsets[5]);
-  object.slug = reader.readString(offsets[6]);
-  object.speciesId = reader.readString(offsets[7]);
+  object.primaryPhoto = reader.readStringOrNull(offsets[4]);
+  object.savedAt = reader.readDateTime(offsets[5]);
+  object.scientificName = reader.readString(offsets[6]);
+  object.slug = reader.readString(offsets[7]);
+  object.speciesId = reader.readString(offsets[8]);
   return object;
 }
 
@@ -162,12 +175,14 @@ P _favoriteSpeciesCollectionDeserializeProp<P>(
     case 3:
       return (reader.readStringOrNull(offset)) as P;
     case 4:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 5:
-      return (reader.readString(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 6:
       return (reader.readString(offset)) as P;
     case 7:
+      return (reader.readString(offset)) as P;
+    case 8:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -998,6 +1013,213 @@ extension FavoriteSpeciesCollectionQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.greaterThan(property: r'conservationStatus', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<
+    FavoriteSpeciesCollection,
+    FavoriteSpeciesCollection,
+    QAfterFilterCondition
+  >
+  detailJsonIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'detailJson'),
+      );
+    });
+  }
+
+  QueryBuilder<
+    FavoriteSpeciesCollection,
+    FavoriteSpeciesCollection,
+    QAfterFilterCondition
+  >
+  detailJsonIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'detailJson'),
+      );
+    });
+  }
+
+  QueryBuilder<
+    FavoriteSpeciesCollection,
+    FavoriteSpeciesCollection,
+    QAfterFilterCondition
+  >
+  detailJsonEqualTo(String? value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'detailJson',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    FavoriteSpeciesCollection,
+    FavoriteSpeciesCollection,
+    QAfterFilterCondition
+  >
+  detailJsonGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'detailJson',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    FavoriteSpeciesCollection,
+    FavoriteSpeciesCollection,
+    QAfterFilterCondition
+  >
+  detailJsonLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'detailJson',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    FavoriteSpeciesCollection,
+    FavoriteSpeciesCollection,
+    QAfterFilterCondition
+  >
+  detailJsonBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'detailJson',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    FavoriteSpeciesCollection,
+    FavoriteSpeciesCollection,
+    QAfterFilterCondition
+  >
+  detailJsonStartsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'detailJson',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    FavoriteSpeciesCollection,
+    FavoriteSpeciesCollection,
+    QAfterFilterCondition
+  >
+  detailJsonEndsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'detailJson',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    FavoriteSpeciesCollection,
+    FavoriteSpeciesCollection,
+    QAfterFilterCondition
+  >
+  detailJsonContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'detailJson',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    FavoriteSpeciesCollection,
+    FavoriteSpeciesCollection,
+    QAfterFilterCondition
+  >
+  detailJsonMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'detailJson',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    FavoriteSpeciesCollection,
+    FavoriteSpeciesCollection,
+    QAfterFilterCondition
+  >
+  detailJsonIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'detailJson', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<
+    FavoriteSpeciesCollection,
+    FavoriteSpeciesCollection,
+    QAfterFilterCondition
+  >
+  detailJsonIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'detailJson', value: ''),
       );
     });
   }
@@ -1989,6 +2211,28 @@ extension FavoriteSpeciesCollectionQuerySortBy
     FavoriteSpeciesCollection,
     QAfterSortBy
   >
+  sortByDetailJson() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'detailJson', Sort.asc);
+    });
+  }
+
+  QueryBuilder<
+    FavoriteSpeciesCollection,
+    FavoriteSpeciesCollection,
+    QAfterSortBy
+  >
+  sortByDetailJsonDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'detailJson', Sort.desc);
+    });
+  }
+
+  QueryBuilder<
+    FavoriteSpeciesCollection,
+    FavoriteSpeciesCollection,
+    QAfterSortBy
+  >
   sortByPrimaryPhoto() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'primaryPhoto', Sort.asc);
@@ -2173,6 +2417,28 @@ extension FavoriteSpeciesCollectionQuerySortThenBy
     FavoriteSpeciesCollection,
     QAfterSortBy
   >
+  thenByDetailJson() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'detailJson', Sort.asc);
+    });
+  }
+
+  QueryBuilder<
+    FavoriteSpeciesCollection,
+    FavoriteSpeciesCollection,
+    QAfterSortBy
+  >
+  thenByDetailJsonDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'detailJson', Sort.desc);
+    });
+  }
+
+  QueryBuilder<
+    FavoriteSpeciesCollection,
+    FavoriteSpeciesCollection,
+    QAfterSortBy
+  >
   thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
@@ -2333,6 +2599,13 @@ extension FavoriteSpeciesCollectionQueryWhereDistinct
   }
 
   QueryBuilder<FavoriteSpeciesCollection, FavoriteSpeciesCollection, QDistinct>
+  distinctByDetailJson({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'detailJson', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<FavoriteSpeciesCollection, FavoriteSpeciesCollection, QDistinct>
   distinctByPrimaryPhoto({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'primaryPhoto', caseSensitive: caseSensitive);
@@ -2402,6 +2675,13 @@ extension FavoriteSpeciesCollectionQueryProperty
   conservationStatusProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'conservationStatus');
+    });
+  }
+
+  QueryBuilder<FavoriteSpeciesCollection, String?, QQueryOperations>
+  detailJsonProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'detailJson');
     });
   }
 

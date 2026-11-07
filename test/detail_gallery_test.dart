@@ -11,6 +11,7 @@ import 'package:marine_app/presentation/provider/providers.dart';
 import 'package:marine_app/presentation/screens/screens.dart';
 import 'package:marine_app/presentation/widgets/widgets.dart';
 
+import 'support/fake_offline.dart';
 import 'support/fake_ui_repository.dart';
 
 const _screen = Size(360, 800);
@@ -312,6 +313,7 @@ void main() {
         ProviderScope(
           retry: (_, _) => null,
           overrides: [
+        ...offlineOverrides(),
             speciesRepositoryProvider.overrideWithValue(_TwoPhotosRepository()),
           ],
           child: _app(const SpeciesDetailView(slug: 'especie-1')),

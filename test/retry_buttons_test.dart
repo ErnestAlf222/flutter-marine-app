@@ -13,6 +13,7 @@ import 'package:marine_app/presentation/provider/providers.dart';
 import 'package:marine_app/presentation/screens/screens.dart';
 import 'package:marine_app/presentation/widgets/widgets.dart';
 
+import 'support/fake_offline.dart';
 import 'support/fake_ui_repository.dart';
 
 // Mensaje con el que falla el servidor falso (los providers lanzan Strings en español)
@@ -128,6 +129,7 @@ Future<void> _pump(
     ProviderScope(
       retry: (_, _) => null,
       overrides: [
+        ...offlineOverrides(),
         speciesRepositoryProvider.overrideWithValue(repository),
         ...overrides,
       ],
@@ -152,7 +154,7 @@ Future<void> _retryAndExpectLoading(
   WidgetTester tester, {
   Finder? button,
 }) async {
-  expect(find.text(_failure), findsWidgets);
+  expect(find.byType(FriendlyState), findsWidgets);
   await tester.tap((button ?? find.text('Reintentar')).first);
   await tester.pump();
   // El fundido entre estados (AnimatedSwitcher) deja un instante al anterior en pantalla
@@ -160,7 +162,7 @@ Future<void> _retryAndExpectLoading(
   await tester.pump(MotionConstants.medium);
 
   expect(
-    find.text(_failure),
+    find.byType(FriendlyState),
     findsNothing,
     reason: 'sigue mostrando el error anterior',
   );

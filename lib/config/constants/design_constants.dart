@@ -60,6 +60,16 @@ class DesignConstants {
   static const double fishTrackFactor = 3;
   // Más pequeño sobre las fotos que cargan
   static const double fishPhotoSize = 22;
+  // Franja "mostrando lo guardado"
+  static const double stripMargin = 8;
+  static const double stripRadius = 20;
+  static const double stripPaddingX = 14;
+  static const double stripPaddingY = 8;
+  static const double stripIcon = 16;
+  static const double stripGap = 8;
+
+  // Pez grande de la primera carga de Inicio
+  static const double firstLoadFishSize = 96;
 
   // Detalle: la foto se recorta (cover) salvo que el recorte sea extremo, es decir,
   // que se pierda más de esta fracción (0.45 = 45 %) del ancho o del alto de la foto.

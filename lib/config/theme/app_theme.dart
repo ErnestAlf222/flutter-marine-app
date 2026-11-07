@@ -153,14 +153,14 @@ class OceanPalette extends ThemeExtension<OceanPalette> {
 /// Estilos de texto propios de la guía, además de los del tema.
 extension OceanTextStyles on TextTheme {
   // Sobretítulo: mayúsculas con espaciado ancho (el texto se escribe ya en mayúsculas)
-  TextStyle get overline => labelSmall!.copyWith(
-    fontWeight: FontWeight.w700,
-    letterSpacing: 2.2,
-  );
+  TextStyle get overline =>
+      labelSmall!.copyWith(fontWeight: FontWeight.w700, letterSpacing: 2.2);
 
   // Nombre científico: cursiva ligera
-  TextStyle get scientific =>
-      bodyMedium!.copyWith(fontStyle: FontStyle.italic, fontWeight: FontWeight.w300);
+  TextStyle get scientific => bodyMedium!.copyWith(
+    fontStyle: FontStyle.italic,
+    fontWeight: FontWeight.w300,
+  );
 }
 
 class AppTheme {

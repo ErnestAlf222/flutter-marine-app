@@ -8,27 +8,43 @@ class DepthGauge extends StatelessWidget {
   final double? maxM;
   final double height;
 
-  const DepthGauge({super.key, required this.minM, required this.maxM, this.height = 240});
+  const DepthGauge({
+    super.key,
+    required this.minM,
+    required this.maxM,
+    this.height = 240,
+  });
 
   static const double _trackWidth = 28;
 
   // Sin decimales cuando el valor es entero
-  static String _fmt(double v) => v == v.roundToDouble() ? '${v.toInt()}' : '$v';
+  static String _fmt(double v) =>
+      v == v.roundToDouble() ? '${v.toInt()}' : '$v';
 
   // Primer paso de la escala que alcanza la profundidad; si ninguno, ella misma
   static double _scaleMax(double deepest) => MeasureConstants.depthScaleSteps
       .firstWhere((s) => s >= deepest, orElse: () => deepest);
 
   // Nombre del extremo y su medida debajo
-  static Widget _end(TextTheme textTheme, OceanPalette palette, String name, {String? value}) {
+  static Widget _end(
+    TextTheme textTheme,
+    OceanPalette palette,
+    String name, {
+    String? value,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(name, style: textTheme.labelMedium?.copyWith(color: palette.paper)),
+        Text(
+          name,
+          style: textTheme.labelMedium?.copyWith(color: palette.paper),
+        ),
         if (value != null)
           Text(
             value,
-            style: textTheme.labelSmall?.copyWith(color: palette.paper.withValues(alpha: 0.75)),
+            style: textTheme.labelSmall?.copyWith(
+              color: palette.paper.withValues(alpha: 0.75),
+            ),
           ),
       ],
     );
@@ -53,7 +69,8 @@ class DepthGauge extends StatelessWidget {
     final animate = !MediaQuery.disableAnimationsOf(context);
 
     return Semantics(
-      label: 'Profundidad, entre qué profundidades se le encuentra: $rangeText. De la superficie hasta ${_fmt(scaleMax)} metros',
+      label:
+          'Profundidad, entre qué profundidades se le encuentra: $rangeText. De la superficie hasta ${_fmt(scaleMax)} metros',
       child: ExcludeSemantics(
         child: DecoratedBox(
           decoration: BoxDecoration(
@@ -88,7 +105,9 @@ class DepthGauge extends StatelessWidget {
                             bottom: 0,
                             child: DecoratedBox(
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(_trackWidth / 2),
+                                borderRadius: BorderRadius.circular(
+                                  _trackWidth / 2,
+                                ),
                                 gradient: palette.depthGradient,
                               ),
                             ),
@@ -103,7 +122,10 @@ class DepthGauge extends StatelessWidget {
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(999),
                                 color: accent.withValues(alpha: 0.85),
-                                border: Border.all(color: palette.paper, width: 2),
+                                border: Border.all(
+                                  color: palette.paper,
+                                  width: 2,
+                                ),
                               ),
                             ),
                           ),
@@ -119,7 +141,12 @@ class DepthGauge extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _end(textTheme, palette, MeasureConstants.surfaceLabel, value: '0 m'),
+                      _end(
+                        textTheme,
+                        palette,
+                        MeasureConstants.surfaceLabel,
+                        value: '0 m',
+                      ),
                       Icon(Icons.arrow_downward, size: 20, color: accent),
                       _end(
                         textTheme,
@@ -141,12 +168,16 @@ class DepthGauge extends StatelessWidget {
                       const SizedBox(height: 6),
                       Text(
                         MeasureConstants.depthQuestion,
-                        style: textTheme.bodyMedium?.copyWith(color: palette.paper),
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: palette.paper,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         rangeText,
-                        style: textTheme.headlineSmall?.copyWith(color: palette.paper),
+                        style: textTheme.headlineSmall?.copyWith(
+                          color: palette.paper,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       // La escala cambia de una especie a otra, así que se dice con claridad

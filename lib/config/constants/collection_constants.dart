@@ -42,6 +42,5 @@ class CollectionConstants {
     ),
   ];
 
-  static CollectionDef byId(String id) =>
-      items.firstWhere((c) => c.id == id);
+  static CollectionDef byId(String id) => items.firstWhere((c) => c.id == id);
 }

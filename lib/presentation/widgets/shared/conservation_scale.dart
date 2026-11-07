@@ -46,7 +46,9 @@ class ConservationScale extends StatelessWidget {
                   Row(
                     children: [
                       for (final level in ConservationConstants.scale)
-                        Expanded(child: _Level(code: level, active: level == code)),
+                        Expanded(
+                          child: _Level(code: level, active: level == code),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -56,12 +58,18 @@ class ConservationScale extends StatelessWidget {
                     if (offScale)
                       Padding(
                         padding: const EdgeInsets.only(right: 8),
-                        child: Icon(Icons.help_outline, size: 20, color: palette.paper),
+                        child: Icon(
+                          Icons.help_outline,
+                          size: 20,
+                          color: palette.paper,
+                        ),
                       ),
                     Expanded(
                       child: Text(
                         label,
-                        style: textTheme.titleMedium?.copyWith(color: palette.paper),
+                        style: textTheme.titleMedium?.copyWith(
+                          color: palette.paper,
+                        ),
                       ),
                     ),
                   ],
@@ -102,7 +110,9 @@ class _Level extends StatelessWidget {
       child: AnimatedContainer(
         duration: MotionConstants.medium,
         curve: MotionConstants.curve,
-        height: active ? DesignConstants.scaleActiveHeight : DesignConstants.scaleHeight,
+        height: active
+            ? DesignConstants.scaleActiveHeight
+            : DesignConstants.scaleHeight,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: active ? color : color.withValues(alpha: 0.28),
@@ -112,7 +122,9 @@ class _Level extends StatelessWidget {
         child: Text(
           code,
           style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: active ? palette.onColor(color) : palette.paper.withValues(alpha: 0.8),
+            color: active
+                ? palette.onColor(color)
+                : palette.paper.withValues(alpha: 0.8),
             fontWeight: active ? FontWeight.w800 : FontWeight.w500,
           ),
         ),

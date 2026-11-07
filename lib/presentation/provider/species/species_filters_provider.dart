@@ -64,16 +64,21 @@ class SpeciesFilters {
   /// Una especie sin ese dato no puede cumplir el filtro.
   bool matches(Species s) {
     if (category != null && s.category != category) return false;
-    if (conservationStatus != null && s.conservationStatus != conservationStatus) {
+    if (conservationStatus != null &&
+        s.conservationStatus != conservationStatus) {
       return false;
     }
     if (dangerLevel != null && s.dangerLevel != dangerLevel) return false;
 
     final depth = depthMin;
-    if (depth != null && (s.depthMaxM == null || s.depthMaxM! < depth)) return false;
+    if (depth != null && (s.depthMaxM == null || s.depthMaxM! < depth)) {
+      return false;
+    }
 
     final size = sizeMin;
-    if (size != null && (s.sizeMaxCm == null || s.sizeMaxCm! < size)) return false;
+    if (size != null && (s.sizeMaxCm == null || s.sizeMaxCm! < size)) {
+      return false;
+    }
 
     return true;
   }

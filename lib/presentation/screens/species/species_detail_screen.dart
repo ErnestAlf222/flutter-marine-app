@@ -98,15 +98,20 @@ class _SpeciesDetailViewState extends ConsumerState<SpeciesDetailView> {
                   child: detail.whenRetry(
                     skipLoadingOnReload: true,
                     loading: () => const _BodySkeleton(),
-                    error: (error, _) => _DetailMessage(
-                      notFound: error == ApiConstants.notFoundMessage,
-                      message: error is String
-                          ? error
-                          : 'Ocurrió un error inesperado.',
-                      onRetry: () =>
-                          ref.invalidate(speciesDetailProvider(slug)),
-                      onBack: () => _back(context),
-                    ),
+                    error: (error, _) =>
+                        failureKindOf(error) == FailureKind.notFound
+                        // Un 404 no se arregla reintentando: se ofrece volver
+                        ? FriendlyState(
+                            kind: FailureKind.notFound,
+                            retryLabel: FriendlyConstants.back,
+                            onRetry: () => _back(context),
+                          )
+                        : FriendlyState.forError(
+                            context,
+                            error,
+                            onRetry: () =>
+                                ref.invalidate(speciesDetailProvider(slug)),
+                          ),
                     data: (data) =>
                         _DetailBody(detail: data, photoIndex: _photoIndex),
                   ),
@@ -114,6 +119,7 @@ class _SpeciesDetailViewState extends ConsumerState<SpeciesDetailView> {
               ),
             ],
           ),
+          const OfflineStrip(),
           // Fijo: el botón de volver sigue a mano aunque la foto se desplace
           Positioned(
             top: 0,
@@ -625,51 +631,5 @@ class _BodySkeleton extends StatelessWidget {
     );
 
     return Column(children: [block(32), block(20), block(120), block(72)]);
-  }
-}
-
-class _DetailMessage extends StatelessWidget {
-  final bool notFound;
-  final String message;
-  final VoidCallback onRetry;
-  final VoidCallback onBack;
-
-  const _DetailMessage({
-    required this.notFound,
-    required this.message,
-    required this.onRetry,
-    required this.onBack,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = OceanPalette.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: DesignConstants.sectionGap),
-      child: Column(
-        children: [
-          Icon(
-            notFound ? Icons.search_off : Icons.error_outline,
-            size: 48,
-            color: palette.paper,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            notFound
-                ? 'Esta especie no existe o ya no está disponible.'
-                : message,
-            textAlign: TextAlign.center,
-            style: TextStyle(color: palette.paper),
-          ),
-          const SizedBox(height: 16),
-          // Un 404 no se arregla reintentando: se ofrece volver
-          FilledButton.tonal(
-            onPressed: notFound ? onBack : onRetry,
-            child: Text(notFound ? 'Volver' : 'Reintentar'),
-          ),
-        ],
-      ),
-    );
   }
 }

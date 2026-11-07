@@ -7,6 +7,7 @@ import 'package:marine_app/presentation/provider/providers.dart';
 import 'package:marine_app/presentation/screens/screens.dart';
 import 'package:marine_app/presentation/widgets/widgets.dart';
 
+import 'support/fake_offline.dart';
 import 'support/fake_ui_repository.dart';
 
 Future<void> _pump(WidgetTester tester, Widget child) async {
@@ -18,6 +19,7 @@ Future<void> _pump(WidgetTester tester, Widget child) async {
     ProviderScope(
       retry: (_, _) => null,
       overrides: [
+        ...offlineOverrides(),
         speciesRepositoryProvider.overrideWithValue(FakeUiRepository()),
       ],
       child: MaterialApp(

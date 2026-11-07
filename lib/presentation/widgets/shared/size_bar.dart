@@ -64,7 +64,10 @@ class SizeBar extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('TAMAÑO', style: textTheme.overline.copyWith(color: accent)),
+                Text(
+                  'TAMAÑO',
+                  style: textTheme.overline.copyWith(color: accent),
+                ),
                 const SizedBox(height: 6),
                 Text(
                   MeasureConstants.sizeQuestion,
@@ -73,7 +76,9 @@ class SizeBar extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   rangeText,
-                  style: textTheme.headlineSmall?.copyWith(color: palette.paper),
+                  style: textTheme.headlineSmall?.copyWith(
+                    color: palette.paper,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 SizedBox(
@@ -88,7 +93,9 @@ class SizeBar extends StatelessWidget {
 
                       return TweenAnimationBuilder<double>(
                         tween: Tween(begin: animate ? 0 : 1, end: 1),
-                        duration: animate ? MotionConstants.long : Duration.zero,
+                        duration: animate
+                            ? MotionConstants.long
+                            : Duration.zero,
                         curve: MotionConstants.curve,
                         builder: (context, fill, _) => Stack(
                           clipBehavior: Clip.none,
@@ -116,7 +123,10 @@ class SizeBar extends StatelessWidget {
                                 decoration: BoxDecoration(
                                   color: accent.withValues(alpha: 0.85),
                                   borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(color: palette.paper, width: 2),
+                                  border: Border.all(
+                                    color: palette.paper,
+                                    width: 2,
+                                  ),
                                 ),
                               ),
                             ),
@@ -132,7 +142,9 @@ class SizeBar extends StatelessWidget {
                   children: [
                     Text(
                       MeasureConstants.smallLabel,
-                      style: textTheme.labelSmall?.copyWith(color: palette.paper),
+                      style: textTheme.labelSmall?.copyWith(
+                        color: palette.paper,
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -145,7 +157,9 @@ class SizeBar extends StatelessWidget {
                     const SizedBox(width: 8),
                     Text(
                       MeasureConstants.largeLabel,
-                      style: textTheme.labelSmall?.copyWith(color: palette.paper),
+                      style: textTheme.labelSmall?.copyWith(
+                        color: palette.paper,
+                      ),
                     ),
                   ],
                 ),

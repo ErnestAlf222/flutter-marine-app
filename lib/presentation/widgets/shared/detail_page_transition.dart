@@ -18,7 +18,10 @@ class DetailPageTransition extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final reduce = MediaQuery.disableAnimationsOf(context);
-    final curved = CurvedAnimation(parent: animation, curve: MotionConstants.curve);
+    final curved = CurvedAnimation(
+      parent: animation,
+      curve: MotionConstants.curve,
+    );
 
     return AnimatedBuilder(
       animation: curved,
@@ -35,13 +38,16 @@ class DetailPageTransition extends StatelessWidget {
               // Oscurece la pantalla de atrás a medida que esta se aleja
               IgnorePointer(
                 child: ColoredBox(
-                  color: palette.ink.withValues(alpha: MotionConstants.minimizeDim * t),
+                  color: palette.ink.withValues(
+                    alpha: MotionConstants.minimizeDim * t,
+                  ),
                 ),
               ),
               Opacity(
                 opacity: t,
                 child: Transform.scale(
-                  scale: MotionConstants.minimizeScale +
+                  scale:
+                      MotionConstants.minimizeScale +
                       (1 - MotionConstants.minimizeScale) * t,
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(

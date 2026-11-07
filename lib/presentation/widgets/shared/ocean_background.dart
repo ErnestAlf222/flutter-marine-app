@@ -11,7 +11,9 @@ class OceanBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: BoxDecoration(gradient: OceanPalette.of(context).depthGradient),
+      decoration: BoxDecoration(
+        gradient: OceanPalette.of(context).depthGradient,
+      ),
       child: child,
     );
   }

@@ -60,8 +60,7 @@ class _BranchSwitcherState extends State<BranchSwitcher>
         return Stack(
           fit: StackFit.expand,
           children: [
-            for (int i = 0; i < widget.children.length; i++)
-              _branch(i, t),
+            for (int i = 0; i < widget.children.length; i++) _branch(i, t),
           ],
         );
       },

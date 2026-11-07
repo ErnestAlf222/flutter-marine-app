@@ -15,7 +15,8 @@ class ExploreSeedNotifier extends Notifier<int> {
   @override
   int build() {
     ref.listen<int>(currentTabProvider, (previous, next) {
-      if (previous == RouteConstants.exploreTab && next != RouteConstants.exploreTab) {
+      if (previous == RouteConstants.exploreTab &&
+          next != RouteConstants.exploreTab) {
         _left = true;
       } else if (next == RouteConstants.exploreTab && _left) {
         _left = false;

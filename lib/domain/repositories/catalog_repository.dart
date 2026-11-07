@@ -16,5 +16,8 @@ abstract class CatalogRepository {
   /// en cualquier orden, por relevancia. Sin texto devuelve todo en el orden del servidor.
   /// [filter] aplica los filtros de Explorar. Devuelve null si el catálogo aún no está listo,
   /// y entonces quien llama usa el servidor.
-  Future<List<Species>?> search({required String query, bool Function(Species)? filter});
+  Future<List<Species>?> search({
+    required String query,
+    bool Function(Species)? filter,
+  });
 }

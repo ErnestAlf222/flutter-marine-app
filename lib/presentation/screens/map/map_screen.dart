@@ -156,8 +156,9 @@ class _MapViewState extends ConsumerState<MapView> {
             skipLoadingOnReload: true,
             // Carga centrada: el pez nada en medio del mapa que aún no llega
             loading: () => const Center(child: FishLoader()),
-            error: (error, _) => _MapMessage(
-              message: error is String ? error : 'Ocurrió un error inesperado.',
+            error: (error, _) => FriendlyState.forError(
+              context,
+              error,
               onRetry: () => ref.invalidate(zonesProvider),
             ),
             data: (data) => OceanMap(
@@ -174,41 +175,6 @@ class _MapViewState extends ConsumerState<MapView> {
           for (final zone in data)
             _ZoneRow(zone: zone, onTap: () => _openZone(zone)),
       ],
-    );
-  }
-}
-
-class _MapMessage extends StatelessWidget {
-  final String message;
-  final VoidCallback onRetry;
-
-  const _MapMessage({required this.message, required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = OceanPalette.of(context);
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(DesignConstants.pagePadding * 2),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline, size: 48, color: palette.paper),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: palette.paper),
-            ),
-            const SizedBox(height: 16),
-            FilledButton.tonal(
-              onPressed: onRetry,
-              child: const Text('Reintentar'),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -521,9 +487,20 @@ class _TopSpeciesState extends ConsumerState<_TopSpecies> {
           ],
         );
 
-    Widget unavailable() => _retried
-        ? note(ApiConstants.zoneRetryFailedMessage)
-        : note('Destacadas no disponibles.', onRetry: _retry, oneLine: true);
+    // Sin conexión o con el servidor caído: el estado amigable, bajo y con su reintento. Si
+    // el reintento también falla se dice con claridad y no se ofrece otro
+    Widget unavailable([Object? error]) {
+      final kind = failureKindOf(error);
+      if (_retried && kind != FailureKind.offline) {
+        return note(ApiConstants.zoneRetryFailedMessage);
+      }
+      return FriendlyState.forError(
+        context,
+        error,
+        onRetry: _retry,
+        compact: true,
+      );
+    }
 
     // [loading]: faltan detalles por procesar, el pez sigue al final de la fila
     Widget tiles(
@@ -558,12 +535,12 @@ class _TopSpeciesState extends ConsumerState<_TopSpecies> {
           ),
           title: sampleTitle,
         ),
-        error: (_, _) => unavailable(),
+        error: (error, _) => unavailable(error),
         data: (state) {
           if (state.items.isEmpty) {
             // Sin coincidencias aún: el pez; sin coincidencias y ya terminó: la nota
             return state.done
-                ? unavailable()
+                ? unavailable(ApiConstants.serverMessage)
                 : section(
                     const Column(
                       children: [
@@ -584,7 +561,10 @@ class _TopSpeciesState extends ConsumerState<_TopSpecies> {
 
     return species.whenRetry(
       loading: () => section(loading()),
-      error: (_, _) => fallback(),
+      // Sin conexión la muestra por detalles tampoco puede armarse: se dice de una vez
+      error: (error, _) => failureKindOf(error) == FailureKind.offline
+          ? unavailable(error)
+          : fallback(),
       data: (items) => items.isEmpty
           ? note('Esta zona aún no tiene especies destacadas.')
           : tiles(items, official: true),

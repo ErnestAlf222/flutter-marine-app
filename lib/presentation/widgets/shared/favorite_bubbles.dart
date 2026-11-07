@@ -95,9 +95,7 @@ class _BubbleBurstState extends State<BubbleBurst>
       child: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) => Stack(
-          children: [
-            for (final b in _bubbles) _bubble(b, _controller.value),
-          ],
+          children: [for (final b in _bubbles) _bubble(b, _controller.value)],
         ),
       ),
     );

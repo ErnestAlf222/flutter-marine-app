@@ -415,23 +415,25 @@ class _Results extends ConsumerWidget {
       switchInCurve: MotionConstants.curve,
       child: list.whenRetry(
         loading: () => const _ResultsSkeleton(key: ValueKey('loading')),
-        error: (error, _) => _ResultsMessage(
+        error: (error, _) => KeyedSubtree(
           key: const ValueKey('error'),
-          icon: Icons.error_outline,
-          message: error is String ? error : 'Ocurrió un error inesperado.',
-          actionLabel: 'Reintentar',
-          onAction: () => ref.invalidate(speciesListProvider),
+          child: FriendlyState.forError(
+            context,
+            error,
+            onRetry: () => ref.invalidate(speciesListProvider),
+          ),
         ),
         data: (state) => state.items.isEmpty
-            ? _ResultsMessage(
+            ? KeyedSubtree(
                 key: const ValueKey('empty'),
-                icon: Icons.search_off,
-                message: 'No encontramos especies con esa búsqueda.',
-                actionLabel: filters.hasQuery || filters.activeCount > 0
-                    ? 'Quitar filtros y búsqueda'
-                    : null,
-                onAction: () =>
-                    ref.read(speciesFiltersProvider.notifier).clear(),
+                child: FriendlyState(
+                  kind: FailureKind.empty,
+                  message: 'No encontramos especies con esa búsqueda.',
+                  retryLabel: 'Quitar filtros y búsqueda',
+                  onRetry: filters.hasQuery || filters.activeCount > 0
+                      ? () => ref.read(speciesFiltersProvider.notifier).clear()
+                      : null,
+                ),
               )
             : _ResultsGrid(key: const ValueKey('data'), state: state),
       ),
@@ -552,20 +554,11 @@ class _ResultsGridState extends ConsumerState<_ResultsGrid> {
 
     // Lo ya cargado se queda; solo el pie muestra el fallo y permite reintentar
     if (state.loadMoreError != null) {
-      return Column(
-        children: [
-          Text(
-            state.loadMoreError!,
-            textAlign: TextAlign.center,
-            style: TextStyle(color: palette.paper),
-          ),
-          const SizedBox(height: 12),
-          FilledButton.tonal(
-            onPressed: () =>
-                ref.read(speciesListProvider.notifier).loadNextPage(),
-            child: const Text('Reintentar'),
-          ),
-        ],
+      return FriendlyState.forError(
+        context,
+        state.loadMoreError,
+        compact: true,
+        onRetry: () => ref.read(speciesListProvider.notifier).loadNextPage(),
       );
     }
 
@@ -615,51 +608,6 @@ class _ResultsSkeleton extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _ResultsMessage extends StatelessWidget {
-  final IconData icon;
-  final String message;
-  final String? actionLabel;
-  final VoidCallback onAction;
-
-  const _ResultsMessage({
-    super.key,
-    required this.icon,
-    required this.message,
-    required this.onAction,
-    this.actionLabel,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = OceanPalette.of(context);
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(DesignConstants.pagePadding * 2),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 48, color: palette.paper),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: palette.paper),
-            ),
-            if (actionLabel != null) ...[
-              const SizedBox(height: 16),
-              FilledButton.tonal(
-                onPressed: onAction,
-                child: Text(actionLabel!),
-              ),
-            ],
-          ],
-        ),
-      ),
     );
   }
 }

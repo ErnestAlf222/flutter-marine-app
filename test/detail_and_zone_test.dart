@@ -11,6 +11,7 @@ import 'package:marine_app/presentation/provider/providers.dart';
 import 'package:marine_app/presentation/screens/screens.dart';
 import 'package:marine_app/presentation/widgets/widgets.dart';
 
+import 'support/fake_offline.dart';
 import 'support/fake_ui_repository.dart';
 
 Widget _host(Widget child, {List<Override> overrides = const []}) =>
@@ -199,6 +200,7 @@ void main() {
         _host(
           const MapView(),
           overrides: [
+        ...offlineOverrides(),
             speciesRepositoryProvider.overrideWithValue(repository),
             zonesProvider.overrideWith((ref) async => [_zone]),
           ],
@@ -212,6 +214,10 @@ void main() {
       await tester.pump();
       await tester.pump(MotionConstants.long);
       await tester.pump(const Duration(milliseconds: 100));
+      // El estado amigable es más alto que la antigua nota: se sube la hoja para verlo entero
+      await tester.drag(find.byType(DraggableScrollableSheet), const Offset(0, -600));
+      await tester.pump();
+      await tester.pump(MotionConstants.long);
       return repository;
     }
 
@@ -267,7 +273,7 @@ void main() {
             height: 260,
             child: SpeciesTile(species: _species),
           ),
-          overrides: [favoritesRepositoryProvider.overrideWithValue(favorites)],
+          overrides: [...offlineOverrides(), favoritesRepositoryProvider.overrideWithValue(favorites)],
         ),
       );
       await tester.pump();
@@ -284,6 +290,7 @@ void main() {
         _host(
           SpeciesDetailView(slug: _species.slug, preview: _species),
           overrides: [
+        ...offlineOverrides(),
             speciesRepositoryProvider.overrideWithValue(FakeUiRepository()),
             favoritesRepositoryProvider.overrideWithValue(favorites),
           ],

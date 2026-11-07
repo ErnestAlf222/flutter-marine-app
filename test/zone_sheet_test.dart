@@ -11,6 +11,7 @@ import 'package:marine_app/presentation/provider/providers.dart';
 import 'package:marine_app/presentation/screens/screens.dart';
 import 'package:marine_app/presentation/widgets/widgets.dart';
 
+import 'support/fake_offline.dart';
 import 'support/fake_ui_repository.dart';
 
 // Como el Mediterráneo: lejos del centro de la vista inicial, pero centrable sin chocar con los bordes
@@ -132,6 +133,7 @@ Future<void> _pump(
     ProviderScope(
       retry: (_, _) => null,
       overrides: [
+        ...offlineOverrides(),
         speciesRepositoryProvider.overrideWithValue(
           repository ?? _Repository(topFails: topFails, detailsOk: detailsOk),
         ),
@@ -424,7 +426,7 @@ void main() {
     });
 
     testWidgets(
-      'cuando fallan las especies destacadas es una sola línea, sin encabezado',
+      'cuando fallan las especies destacadas sale el estado amigable, sin encabezado',
       (tester) async {
         await _pump(tester);
         await _openZone(tester);
@@ -432,11 +434,9 @@ void main() {
 
         expect(find.text('ESPECIES DESTACADAS'), findsNothing);
         expect(find.text(MapConstants.sampleTitle.toUpperCase()), findsNothing);
-        final note = find.text('Destacadas no disponibles.');
-        expect(note, findsOneWidget);
+        expect(find.byType(FriendlyState), findsOneWidget);
+        expect(find.text(FriendlyConstants.messages[FailureKind.server]!), findsOneWidget);
         expect(find.text('Reintentar'), findsOneWidget);
-        // Una línea: el texto no se parte en varias
-        expect(tester.getSize(note).height, lessThan(24));
         await _drain(tester);
       },
     );

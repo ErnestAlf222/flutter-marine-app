@@ -11,6 +11,7 @@ import 'package:marine_app/presentation/provider/providers.dart';
 import 'package:marine_app/presentation/screens/screens.dart';
 import 'package:marine_app/presentation/widgets/widgets.dart';
 
+import 'support/fake_offline.dart';
 import 'support/fake_ui_repository.dart';
 
 const _zone = OceanZone(
@@ -93,6 +94,7 @@ Future<void> _pump(
     ProviderScope(
       retry: (_, _) => null,
       overrides: [
+        ...offlineOverrides(),
         speciesRepositoryProvider.overrideWithValue(repository),
         zonesProvider.overrideWith((ref) async => [_zone]),
         openSpeciesProvider.overrideWithValue(

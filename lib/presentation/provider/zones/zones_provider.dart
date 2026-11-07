@@ -5,14 +5,34 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:marine_app/config/config.dart';
 import 'package:marine_app/domain/domain.dart';
+import 'package:marine_app/presentation/provider/offline/offline_provider.dart';
 import 'package:marine_app/presentation/provider/species/species_provider.dart';
 
-final zonesProvider = FutureProvider<List<OceanZone>>((ref) async {
-  final repository = ref.watch(speciesRepositoryProvider);
-  final (zones, error) = await repository.getZones(lang: ApiConstants.appLang);
+// Las zonas son pocas y estables: se guardan para que el mapa se vea sin conexión
+final zonesProvider = FutureProvider<List<OceanZone>>((ref) {
+  return trackFailure(ref, () async {
+    final repository = ref.watch(speciesRepositoryProvider);
+    final cache = ref.watch(offlineCacheRepositoryProvider);
+    final (zones, error) = await repository.getZones(
+      lang: ApiConstants.appLang,
+    );
 
-  if (zones == null) throw error;
-  return zones;
+    if (zones != null) {
+      unawaited(cache.saveZones(zones));
+      return zones;
+    }
+
+    final saved = await cache.zones();
+    if (saved != null && saved.isNotEmpty) {
+      if (ref.mounted) {
+        ref
+            .read(savedContentProvider.notifier)
+            .mark(OfflineConstants.savedZones);
+      }
+      return saved;
+    }
+    throw error;
+  });
 });
 
 // Destacadas de una zona. El servidor falla con 6 de 7 zonas (500), así que el
@@ -20,16 +40,18 @@ final zonesProvider = FutureProvider<List<OceanZone>>((ref) async {
 final zoneTopSpeciesProvider = FutureProvider.family<List<Species>, String>((
   ref,
   zone,
-) async {
-  final repository = ref.watch(speciesRepositoryProvider);
-  final (species, error) = await repository.getZoneTopSpecies(
-    zone: zone,
-    lang: ApiConstants.appLang,
-    limit: ApiConstants.zoneTopLimit,
-  );
+) {
+  return trackFailure(ref, () async {
+    final repository = ref.watch(speciesRepositoryProvider);
+    final (species, error) = await repository.getZoneTopSpecies(
+      zone: zone,
+      lang: ApiConstants.appLang,
+      limit: ApiConstants.zoneTopLimit,
+    );
 
-  if (species == null) throw error;
-  return species;
+    if (species == null) throw error;
+    return species;
+  });
 });
 
 // Muestra de una zona que se va armando: [done] es false mientras falten detalles por procesar
@@ -53,7 +75,9 @@ Stream<ZoneSample> sampleZoneSpecies(
   final found = <Species>[];
 
   void emit({required bool done}) {
-    if (!controller.isClosed) controller.add(ZoneSample([...found], done: done));
+    if (!controller.isClosed) {
+      controller.add(ZoneSample([...found], done: done));
+    }
   }
 
   Future<void> run() async {
@@ -66,9 +90,9 @@ Stream<ZoneSample> sampleZoneSpecies(
       featured: true,
       random: random,
     );
-    final candidates = ([...pool]..shuffle(random))
-        .take(ApiConstants.zoneSampleMaxDetails)
-        .toList();
+    final candidates = ([
+      ...pool,
+    ]..shuffle(random)).take(ApiConstants.zoneSampleMaxDetails).toList();
 
     int next = 0;
     int failures = 0;
@@ -117,6 +141,9 @@ Stream<ZoneSample> sampleZoneSpecies(
 }
 
 // Una vez por zona y sesión: el proveedor no se libera, así que sirve de caché
-final zoneSampleProvider = StreamProvider.family<ZoneSample, String>((ref, zone) {
+final zoneSampleProvider = StreamProvider.family<ZoneSample, String>((
+  ref,
+  zone,
+) {
   return sampleZoneSpecies(ref.watch(speciesRepositoryProvider), zone);
 });

@@ -80,7 +80,9 @@ class _FavoritesViewState extends ConsumerState<FavoritesView> {
                 const SizedBox(height: 4),
                 Text(
                   'Tus favoritos',
-                  style: textTheme.headlineMedium?.copyWith(color: palette.paper),
+                  style: textTheme.headlineMedium?.copyWith(
+                    color: palette.paper,
+                  ),
                 ),
               ],
             ),
@@ -90,34 +92,36 @@ class _FavoritesViewState extends ConsumerState<FavoritesView> {
           loading: () => _skeleton(),
           error: (error, _) => SliverFillRemaining(
             hasScrollBody: false,
-            child: _Message(
-              icon: Icons.error_outline,
+            child: FriendlyState(
+              kind: FailureKind.server,
               message: 'No se pudieron leer tus favoritos.',
-              actionLabel: 'Reintentar',
-              onAction: () => ref.invalidate(favoritesProvider),
+              onRetry: () => ref.invalidate(favoritesProvider),
             ),
           ),
           data: (items) => items.isEmpty
               ? SliverFillRemaining(
                   hasScrollBody: false,
-                  child: _Message(
-                    icon: Icons.favorite_border,
-                    message:
-                        'Aún no tienes favoritos.\nToca el corazón de una especie para guardarla aquí. Se queda en tu dispositivo y se ve sin conexión.',
-                    actionLabel: 'Explorar especies',
-                    onAction: () => context.go(RouteConstants.explore),
+                  child: FriendlyState(
+                    kind: FailureKind.empty,
+                    message: 'Aún no tienes favoritos.\nToca el corazón de una especie para guardarla aquí. Se queda en tu dispositivo y se ve sin conexión.',
+                    retryLabel: 'Explorar especies',
+                    onRetry: () => context.go(RouteConstants.explore),
                   ),
                 )
               : _grid(items),
         ),
-        const SliverToBoxAdapter(child: SizedBox(height: DesignConstants.sectionGap)),
+        const SliverToBoxAdapter(
+          child: SizedBox(height: DesignConstants.sectionGap),
+        ),
       ],
     );
   }
 
   Widget _grid(List<Species> items) {
     return SliverPadding(
-      padding: const EdgeInsets.symmetric(horizontal: DesignConstants.pagePadding),
+      padding: const EdgeInsets.symmetric(
+        horizontal: DesignConstants.pagePadding,
+      ),
       sliver: SliverMasonryGrid.count(
         crossAxisCount: 2,
         mainAxisSpacing: DesignConstants.gridGap,
@@ -142,8 +146,9 @@ class _FavoritesViewState extends ConsumerState<FavoritesView> {
                   child: SpeciesTile(
                     parallax: true,
                     species: species,
-                    aspectRatio: DesignConstants
-                        .mosaicAspects[index % DesignConstants.mosaicAspects.length],
+                    aspectRatio:
+                        DesignConstants.mosaicAspects[index %
+                            DesignConstants.mosaicAspects.length],
                     onTap: () => openSpecies(context, species),
                     onRemoveFavorite: () => _remove(species),
                   ),
@@ -158,7 +163,9 @@ class _FavoritesViewState extends ConsumerState<FavoritesView> {
 
   Widget _skeleton() {
     return SliverPadding(
-      padding: const EdgeInsets.symmetric(horizontal: DesignConstants.pagePadding),
+      padding: const EdgeInsets.symmetric(
+        horizontal: DesignConstants.pagePadding,
+      ),
       sliver: SliverMasonryGrid.count(
         crossAxisCount: 2,
         mainAxisSpacing: DesignConstants.gridGap,
@@ -170,45 +177,6 @@ class _FavoritesViewState extends ConsumerState<FavoritesView> {
           child: SkeletonBox(
             borderRadius: BorderRadius.circular(DesignConstants.cardRadius),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Message extends StatelessWidget {
-  final IconData icon;
-  final String message;
-  final String actionLabel;
-  final VoidCallback onAction;
-
-  const _Message({
-    required this.icon,
-    required this.message,
-    required this.actionLabel,
-    required this.onAction,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = OceanPalette.of(context);
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(DesignConstants.pagePadding * 2),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 48, color: palette.paper),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: palette.paper),
-            ),
-            const SizedBox(height: 16),
-            FilledButton.tonal(onPressed: onAction, child: Text(actionLabel)),
-          ],
         ),
       ),
     );

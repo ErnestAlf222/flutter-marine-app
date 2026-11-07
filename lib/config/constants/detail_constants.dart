@@ -12,7 +12,8 @@ class DetailConstants {
 
   // Clasificación científica
   static const String taxonomyTitle = 'Clasificación';
-  static const String taxonomyIntro = 'Así se agrupa esta especie en la ciencia';
+  static const String taxonomyIntro =
+      'Así se agrupa esta especie en la ciencia';
   static const String taxonomyExpand = 'Ver clasificación completa';
   static const String taxonomyCollapse = 'Ver menos';
   static const String uncertainPosition = '(posición incierta)';

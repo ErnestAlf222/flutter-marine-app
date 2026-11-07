@@ -6,10 +6,16 @@ class DepthRangeLabel extends StatelessWidget {
   final double? maxM;
   final Color? color;
 
-  const DepthRangeLabel({super.key, required this.minM, required this.maxM, this.color});
+  const DepthRangeLabel({
+    super.key,
+    required this.minM,
+    required this.maxM,
+    this.color,
+  });
 
   // Sin decimales cuando el valor es entero
-  static String _fmt(double v) => v == v.roundToDouble() ? '${v.toInt()}' : '$v';
+  static String _fmt(double v) =>
+      v == v.roundToDouble() ? '${v.toInt()}' : '$v';
 
   @override
   Widget build(BuildContext context) {
@@ -20,10 +26,8 @@ class DepthRangeLabel extends StatelessWidget {
     final text = min != null && max != null
         ? '${_fmt(min)}–${_fmt(max)} m'
         : '${_fmt((min ?? max)!)} m';
-    final style = Theme.of(context).textTheme.labelMedium?.copyWith(
-      color: color,
-      fontWeight: FontWeight.w600,
-    );
+    final style = Theme.of(context).textTheme.labelMedium
+        ?.copyWith(color: color, fontWeight: FontWeight.w600);
 
     return Row(
       mainAxisSize: MainAxisSize.min,

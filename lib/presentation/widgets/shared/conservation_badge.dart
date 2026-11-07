@@ -7,7 +7,11 @@ class ConservationBadge extends StatelessWidget {
   final String? status;
   final bool compact;
 
-  const ConservationBadge({super.key, required this.status, this.compact = false});
+  const ConservationBadge({
+    super.key,
+    required this.status,
+    this.compact = false,
+  });
 
   @override
   Widget build(BuildContext context) {

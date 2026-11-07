@@ -24,7 +24,8 @@ class CategoryTile extends StatelessWidget {
     final background = palette.categoryColor(categoryId);
     final foreground = palette.onColor(background);
     final label = CategoryConstants.labels[categoryId] ?? categoryId;
-    final icon = CategoryConstants.icons[categoryId] ?? CategoryConstants.fallbackIcon;
+    final icon =
+        CategoryConstants.icons[categoryId] ?? CategoryConstants.fallbackIcon;
     final textTheme = Theme.of(context).textTheme;
     final radius = BorderRadius.circular(
       compact ? 999 : DesignConstants.tileRadius,
@@ -33,7 +34,9 @@ class CategoryTile extends StatelessWidget {
     // La selección se marca con un borde claro, sin cambiar el color del grupo
     final shape = RoundedRectangleBorder(
       borderRadius: radius,
-      side: selected ? BorderSide(color: palette.paper, width: 2.5) : BorderSide.none,
+      side: selected
+          ? BorderSide(color: palette.paper, width: 2.5)
+          : BorderSide.none,
     );
 
     if (compact) {
@@ -48,7 +51,11 @@ class CategoryTile extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(selected ? Icons.check : icon, size: 18, color: foreground),
+                Icon(
+                  selected ? Icons.check : icon,
+                  size: 18,
+                  color: foreground,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   label,

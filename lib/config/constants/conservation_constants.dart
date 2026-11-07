@@ -22,13 +22,15 @@ class ConservationConstants {
   // Frases cortas basadas en las definiciones oficiales de las Categorías y Criterios de la
   // Lista Roja de la UICN, versión 3.1 (portals.iucn.org, documento RL-2001-001-2nd)
   static const Map<String, String> phrases = {
-    'LC': 'Evaluada y fuera de peligro: no cumple los criterios de ninguna categoría de '
+    'LC':
+        'Evaluada y fuera de peligro: no cumple los criterios de ninguna categoría de '
         'amenaza ni de casi amenazada.',
     'NT': 'Aún no está amenazada, pero se acerca a estarlo o podría estarlo pronto.',
     'VU': 'Enfrenta un riesgo alto de extinción en estado silvestre.',
     'EN': 'Enfrenta un riesgo muy alto de extinción en estado silvestre.',
     'CR': 'Enfrenta un riesgo extremadamente alto de extinción en estado silvestre.',
-    'EW': 'Solo sobrevive en cultivo, en cautiverio o en poblaciones naturalizadas '
+    'EW':
+        'Solo sobrevive en cultivo, en cautiverio o en poblaciones naturalizadas '
         'lejos de su área original.',
     'EX': 'No hay duda razonable de que murió el último individuo.',
     'DD': 'No hay información suficiente para evaluar su riesgo de extinción.',

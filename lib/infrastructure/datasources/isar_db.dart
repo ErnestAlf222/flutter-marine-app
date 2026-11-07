@@ -2,6 +2,7 @@ import 'package:isar_community/isar.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:marine_app/infrastructure/models/catalog_species_collection.dart';
+import 'package:marine_app/infrastructure/models/detail_cache_collection.dart';
 import 'package:marine_app/infrastructure/models/favorite_species_collection.dart';
 
 /// La base local de la app. Isar no admite abrir dos veces la misma base, así que
@@ -22,13 +23,12 @@ class IsarDb {
     if (existing != null) return existing;
 
     final dir = await getApplicationDocumentsDirectory();
-    return Isar.open(
-      [
-        FavoriteSpeciesCollectionSchema,
-        CatalogSpeciesCollectionSchema,
-        CatalogSyncCollectionSchema,
-      ],
-      directory: dir.path,
-    );
+    return Isar.open([
+      FavoriteSpeciesCollectionSchema,
+      CatalogSpeciesCollectionSchema,
+      CatalogSyncCollectionSchema,
+      DetailCacheCollectionSchema,
+      JsonCacheCollectionSchema,
+    ], directory: dir.path);
   }
 }

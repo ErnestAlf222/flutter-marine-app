@@ -41,6 +41,14 @@ class ApiConstants {
   // El detalle lo compara para distinguir un 404 de otros errores
   static const String notFoundMessage = 'No se encontró lo que buscabas.';
 
+  // Los otros dos tipos de fallo, que la presentación convierte en estados amigables:
+  // sin conexión (no hubo respuesta) y servidor con problemas (5xx, 429 o respuesta rara)
+  static const String offlineMessage = 'Sin conexión a internet.';
+  static const String serverMessage =
+      'El servidor tuvo un problema. Inténtalo más tarde.';
+  static const String unexpectedMessage = 'Ocurrió un error inesperado.';
+  static const String noSpeciesMessage = 'No se encontró ninguna especie.';
+
   // Idioma fijo de la app en la v1; los providers lo pasan como `lang`
   static const String appLang = 'es';
 

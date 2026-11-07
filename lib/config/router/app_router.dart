@@ -20,7 +20,9 @@ final GoRouter appRouter = GoRouter(
         return CustomTransitionPage<void>(
           key: state.pageKey,
           transitionDuration: reduce ? Duration.zero : MotionConstants.long,
-          reverseTransitionDuration: reduce ? Duration.zero : MotionConstants.medium,
+          reverseTransitionDuration: reduce
+              ? Duration.zero
+              : MotionConstants.medium,
           child: SpeciesDetailScreen(
             slug: state.pathParameters[RouteConstants.speciesParam]!,
             // La tarjeta pasa la especie para que el Hero tenga destino al instante

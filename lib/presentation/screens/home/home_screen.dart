@@ -21,7 +21,10 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // Transparente para ver el degradado de profundidad del shell; sin SafeArea
     // porque el héroe pasa por debajo de la barra de estado
-    return const Scaffold(backgroundColor: Colors.transparent, body: HomeView());
+    return const Scaffold(
+      backgroundColor: Colors.transparent,
+      body: HomeView(),
+    );
   }
 }
 
@@ -84,9 +87,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
         ..hideCurrentSnackBar()
         ..showSnackBar(
           SnackBar(
-            content: Text(
-              error is String ? error : 'Ocurrió un error inesperado.',
-            ),
+            content: Text(FriendlyConstants.messages[failureKindOf(error)]!),
           ),
         );
     } finally {
@@ -130,9 +131,8 @@ class _HomeViewState extends ConsumerState<HomeView> {
                 children: [
                   Text(
                     AppConstants.appName,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: palette.paper,
-                    ),
+                    style: Theme.of(context).textTheme.titleLarge
+                        ?.copyWith(color: palette.paper),
                   ),
                   const SizedBox(height: 12),
                   SpeciesSearchField(
@@ -464,20 +464,21 @@ class _HeroSection extends ConsumerWidget {
           featured.whenRetry(
             // Al refrescar se conserva el héroe anterior mientras llega el nuevo
             skipLoadingOnReload: true,
-            loading: () => const _HeroLoading(),
-            // Los providers lanzan mensajes en español (String); cualquier otra
-            // excepción es inesperada y no se vuelca cruda al usuario
-            error: (error, _) => _HeroMessage(
-              icon: Icons.error_outline,
-              message: error is String
-                  ? error
-                  : 'Ocurrió un error inesperado.',
-              onRetry: () => ref.invalidate(featuredSpeciesProvider),
+            loading: () => const _FirstLoad(),
+            // Los providers lanzan mensajes en español (String); el tipo de fallo sale del
+            // mensaje y cualquier otra excepción cuenta como servidor
+            error: (error, _) => Padding(
+              padding: _heroCardInsets(context),
+              child: FriendlyState.forError(
+                context,
+                error,
+                onRetry: () => ref.invalidate(featuredSpeciesProvider),
+              ),
             ),
             data: (species) => species.isEmpty
-                ? const _HeroMessage(
-                    icon: Icons.sailing_outlined,
-                    message: 'No hay especies destacadas por ahora.',
+                ? Padding(
+                    padding: _heroCardInsets(context),
+                    child: const FriendlyState(kind: FailureKind.empty),
                   )
                 : _HeroCarousel(species: species),
           ),
@@ -540,7 +541,11 @@ class _HeroCarouselState extends State<_HeroCarousel>
   int _pointers = 0;
 
   bool get _autoplay =>
-      _tabVisible && _foreground && !_reducedMotion && _pointers == 0 && _count > 1;
+      _tabVisible &&
+      _foreground &&
+      !_reducedMotion &&
+      _pointers == 0 &&
+      _count > 1;
 
   @override
   void initState() {
@@ -605,8 +610,8 @@ class _HeroCarouselState extends State<_HeroCarousel>
   }
 
   // Página fraccionaria durante el deslizamiento; antes del primer layout aún no existe
-  double get _page => _controller.hasClients &&
-          _controller.position.haveDimensions
+  double get _page =>
+      _controller.hasClients && _controller.position.haveDimensions
       ? _controller.page ?? _controller.initialPage.toDouble()
       : _controller.initialPage.toDouble();
 
@@ -701,7 +706,9 @@ class _HeroBackdrop extends StatelessWidget {
                 ),
               ),
               ColoredBox(
-                color: palette.ink.withValues(alpha: DesignConstants.backdropDim),
+                color: palette.ink.withValues(
+                  alpha: DesignConstants.backdropDim,
+                ),
               ),
             ],
           ),
@@ -815,68 +822,43 @@ class _HeroCard extends StatelessWidget {
   }
 }
 
-class _HeroLoading extends StatelessWidget {
-  const _HeroLoading();
+// Primera carga: el pez grande y centrado sobre el fondo del océano. Espera un instante antes
+// de aparecer para que, con datos guardados (que llegan en pocos ms), no parpadee.
+class _FirstLoad extends StatefulWidget {
+  const _FirstLoad();
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: _heroCardInsets(context),
-      child: Center(
-        child: AspectRatio(
-          aspectRatio: DesignConstants.photoAspect,
-          child: SkeletonBox(
-            borderRadius: BorderRadius.circular(DesignConstants.cardRadius),
-          ),
-        ),
-      ),
-    );
-  }
+  State<_FirstLoad> createState() => _FirstLoadState();
 }
 
-class _HeroMessage extends StatelessWidget {
-  final IconData icon;
-  final String message;
-  final VoidCallback? onRetry;
-  // En el héroe deja libre la cabecera; fuera de él basta un margen simple
-  final bool inHero;
+class _FirstLoadState extends State<_FirstLoad> {
+  bool _visible = false;
+  Timer? _timer;
 
-  const _HeroMessage({
-    required this.icon,
-    required this.message,
-    this.onRetry,
-    this.inHero = true,
-  });
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer(OfflineConstants.firstLoadFishDelay, () {
+      if (mounted) setState(() => _visible = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final palette = OceanPalette.of(context);
+    final reduce = MediaQuery.disableAnimationsOf(context);
 
-    return Padding(
-      padding: (inHero ? _heroCardInsets(context) : const EdgeInsets.all(0))
-          .copyWith(
-            left: DesignConstants.pagePadding * 2,
-            right: DesignConstants.pagePadding * 2,
-          ),
+    return OceanBackground(
       child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 48, color: palette.paper),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: palette.paper),
-            ),
-            if (onRetry != null) ...[
-              const SizedBox(height: 16),
-              FilledButton.tonal(
-                onPressed: onRetry,
-                child: const Text('Reintentar'),
-              ),
-            ],
-          ],
+        child: AnimatedOpacity(
+          opacity: _visible ? 1 : 0,
+          duration: reduce ? Duration.zero : MotionConstants.short,
+          child: const FishLoader(size: DesignConstants.firstLoadFishSize),
         ),
       ),
     );
@@ -906,19 +888,18 @@ class _DiscoverSliver extends ConsumerWidget {
           crossAxisSpacing: DesignConstants.gridGap,
           childCount: 4,
           itemBuilder: (context, index) => AspectRatio(
-            aspectRatio:
-                DesignConstants.mosaicAspects[index %
-                    DesignConstants.mosaicAspects.length],
+            aspectRatio: DesignConstants
+                .mosaicAspects[index % DesignConstants.mosaicAspects.length],
             child: SkeletonBox(
               borderRadius: BorderRadius.circular(DesignConstants.cardRadius),
             ),
           ),
         ),
         error: (error, _) => SliverToBoxAdapter(
-          child: _HeroMessage(
-            inHero: false,
-            icon: Icons.error_outline,
-            message: error is String ? error : 'Ocurrió un error inesperado.',
+          child: FriendlyState.forError(
+            context,
+            error,
+            compact: true,
             onRetry: () => ref.invalidate(discoverSpeciesProvider),
           ),
         ),
@@ -933,9 +914,8 @@ class _DiscoverSliver extends ConsumerWidget {
               parallax: true,
               species: species[index],
               onTap: () => openSpecies(context, species[index]),
-              aspectRatio:
-                  DesignConstants.mosaicAspects[index %
-                      DesignConstants.mosaicAspects.length],
+              aspectRatio: DesignConstants
+                  .mosaicAspects[index % DesignConstants.mosaicAspects.length],
             ),
           ),
         ),

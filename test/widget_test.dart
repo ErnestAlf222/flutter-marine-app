@@ -4,11 +4,15 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:marine_app/main.dart';
 
+import 'support/fake_offline.dart';
+
 void main() {
   testWidgets('MainApp muestra la barra de 4 pestañas', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const ProviderScope(child: MainApp()));
+    await tester.pumpWidget(
+      ProviderScope(overrides: offlineOverrides(), child: const MainApp()),
+    );
     // Sin pumpAndSettle: el esqueleto de carga repite su brillo sin parar
     await tester.pump(const Duration(seconds: 1));
 

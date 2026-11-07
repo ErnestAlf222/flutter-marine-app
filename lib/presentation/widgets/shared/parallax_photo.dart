@@ -14,16 +14,14 @@ class ParallaxPhoto extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scrollable = Scrollable.maybeOf(context);
-    final vertical = scrollable != null &&
+    final vertical =
+        scrollable != null &&
         (scrollable.axisDirection == AxisDirection.down ||
             scrollable.axisDirection == AxisDirection.up);
     if (!vertical || MediaQuery.disableAnimationsOf(context)) return child;
 
     return Flow(
-      delegate: _ParallaxDelegate(
-        scrollable: scrollable,
-        itemContext: context,
-      ),
+      delegate: _ParallaxDelegate(scrollable: scrollable, itemContext: context),
       children: [child],
     );
   }
@@ -64,14 +62,11 @@ class _ParallaxDelegate extends FlowDelegate {
       context.size.width,
       context.size.height + DesignConstants.parallaxTravel * 2,
     );
-    final rect = Alignment(0, fraction * 2 - 1).inscribe(
-      childSize,
-      Offset.zero & context.size,
-    );
-    context.paintChild(
+    final rect = Alignment(
       0,
-      transform: Matrix4.translationValues(0, rect.top, 0),
-    );
+      fraction * 2 - 1,
+    ).inscribe(childSize, Offset.zero & context.size);
+    context.paintChild(0, transform: Matrix4.translationValues(0, rect.top, 0));
   }
 
   @override

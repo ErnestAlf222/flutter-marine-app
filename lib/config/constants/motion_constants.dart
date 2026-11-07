@@ -29,7 +29,7 @@ class MotionConstants {
   // Escala a la que se encoge una tarjeta al quitarla de favoritos
   static const double removeScale = 0.8;
 
-  static const Duration short =Duration(milliseconds: 350);
+  static const Duration short = Duration(milliseconds: 350);
   static const Duration medium = Duration(milliseconds: 450);
   static const Duration long = Duration(milliseconds: 500);
 

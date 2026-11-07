@@ -6,6 +6,7 @@ import 'package:marine_app/config/config.dart';
 import 'package:marine_app/presentation/provider/providers.dart';
 import 'package:marine_app/presentation/screens/screens.dart';
 
+import 'support/fake_offline.dart';
 import 'support/fake_ui_repository.dart';
 
 Future<void> _pump(
@@ -23,6 +24,7 @@ Future<void> _pump(
     ProviderScope(
       retry: (_, _) => null,
       overrides: [
+        ...offlineOverrides(),
         speciesRepositoryProvider.overrideWithValue(
           FakeUiRepository(count: count),
         ),

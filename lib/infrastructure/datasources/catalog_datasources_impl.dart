@@ -66,7 +66,12 @@ class CatalogDatasourcesImpl implements CatalogDatasource {
 
           final row = existing ?? CatalogMapper.stub(s.slug, runId);
           await table.put(
-            CatalogMapper.applyListing(row, s, position: position, runId: runId),
+            CatalogMapper.applyListing(
+              row,
+              s,
+              position: position,
+              runId: runId,
+            ),
           );
         }
       });
@@ -81,7 +86,11 @@ class CatalogDatasourcesImpl implements CatalogDatasource {
     try {
       final db = await IsarDb.open();
       final removed = await db.writeTxn(
-        () => db.catalogSpeciesCollections.filter().not().runIdEqualTo(runId).deleteAll(),
+        () => db.catalogSpeciesCollections
+            .filter()
+            .not()
+            .runIdEqualTo(runId)
+            .deleteAll(),
       );
       return (removed, '');
     } catch (_) {

@@ -52,10 +52,7 @@ class SpeciesTile extends StatelessWidget {
             // participa en el Hero, o el mismo slug en dos pestañas lo rompería
             HeroMode(
               enabled: TickerMode.valuesOf(context).enabled,
-              child: Hero(
-                tag: species.slug,
-                child: _photo(),
-              ),
+              child: Hero(tag: species.slug, child: _photo()),
             ),
             const PhotoScrim(),
             Positioned(
@@ -70,7 +67,9 @@ class SpeciesTile extends StatelessWidget {
                     species.commonName,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: textTheme.titleMedium?.copyWith(color: palette.paper),
+                    style: textTheme.titleMedium?.copyWith(
+                      color: palette.paper,
+                    ),
                   ),
                   Text(
                     species.scientificName,

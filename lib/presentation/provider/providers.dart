@@ -7,6 +7,9 @@ export 'catalog/catalog_provider.dart';
 // Favorites
 export 'favorites/favorites_provider.dart';
 
+// Offline
+export 'offline/offline_provider.dart';
+
 // Map
 export 'map/selected_zone_provider.dart';
 export 'map/world_land_provider.dart';

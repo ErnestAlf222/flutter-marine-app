@@ -130,7 +130,11 @@ class CatalogRepositoryImpl extends CatalogRepository {
       if (cleanError.isNotEmpty) throw cleanError;
 
       final (done, doneError) = await local.writeSync(
-        CatalogSyncState(totalPages: totalPages, runId: runId, completedAt: _now()),
+        CatalogSyncState(
+          totalPages: totalPages,
+          runId: runId,
+          completedAt: _now(),
+        ),
       );
       if (done == null) throw doneError;
 

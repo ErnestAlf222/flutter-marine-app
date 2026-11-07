@@ -37,8 +37,27 @@ class MeasureConstants {
   // Pasos de los controles de Explorar; 0 significa "sin filtro". Los filtros de la
   // API son por solapamiento hacia un solo lado: depth_min = "llega al menos a X m"
   // y size_min = "alcanza al menos X cm" (medido contra el servidor)
-  static const List<double> depthFilterSteps = [0, 10, 25, 50, 100, 200, 500, 1000, 2000];
-  static const List<double> sizeFilterSteps = [0, 10, 25, 50, 100, 200, 500, 1000];
+  static const List<double> depthFilterSteps = [
+    0,
+    10,
+    25,
+    50,
+    100,
+    200,
+    500,
+    1000,
+    2000,
+  ];
+  static const List<double> sizeFilterSteps = [
+    0,
+    10,
+    25,
+    50,
+    100,
+    200,
+    500,
+    1000,
+  ];
 
   // Textos de las tarjetas: qué rango se muestra y qué significan los extremos
   static const String depthQuestion = 'Entre qué profundidades se le encuentra';
@@ -50,9 +69,17 @@ class MeasureConstants {
   static const String largeLabel = 'Más grande';
 
   static const List<SizeReference> sizeReferences = [
-    SizeReference(label: 'Moneda', cm: 2.5, icon: Icons.monetization_on_outlined),
+    SizeReference(
+      label: 'Moneda',
+      cm: 2.5,
+      icon: Icons.monetization_on_outlined,
+    ),
     SizeReference(label: 'Mano', cm: 18, icon: Icons.back_hand_outlined),
     SizeReference(label: 'Persona', cm: 170, icon: Icons.person_outline),
-    SizeReference(label: 'Autobús', cm: 1200, icon: Icons.directions_bus_outlined),
+    SizeReference(
+      label: 'Autobús',
+      cm: 1200,
+      icon: Icons.directions_bus_outlined,
+    ),
   ];
 }

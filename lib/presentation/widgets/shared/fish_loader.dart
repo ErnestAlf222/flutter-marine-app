@@ -23,7 +23,10 @@ class FishClock implements TickerProvider {
   Animation<double> get animation => _controller!;
 
   void acquire() {
-    _controller ??= AnimationController(vsync: this, duration: MotionConstants.fishCycle);
+    _controller ??= AnimationController(
+      vsync: this,
+      duration: MotionConstants.fishCycle,
+    );
     if (_users++ == 0) _controller!.repeat();
   }
 
@@ -43,7 +46,8 @@ class FishLoader extends StatefulWidget {
   // Los pequeños (fotos) comparten un solo reloj; los grandes llevan el suyo
   final bool shared;
 
-  const FishLoader({super.key, this.size = DesignConstants.fishSize}) : shared = false;
+  const FishLoader({super.key, this.size = DesignConstants.fishSize})
+    : shared = false;
 
   /// Pez de marcador de foto: usa el reloj compartido [FishClock]
   const FishLoader.small({super.key, this.size = DesignConstants.fishPhotoSize})
@@ -53,7 +57,8 @@ class FishLoader extends StatefulWidget {
   State<FishLoader> createState() => _FishLoaderState();
 }
 
-class _FishLoaderState extends State<FishLoader> with SingleTickerProviderStateMixin {
+class _FishLoaderState extends State<FishLoader>
+    with SingleTickerProviderStateMixin {
   // Solo los peces con reloj propio crean controlador
   late final AnimationController? _own = widget.shared
       ? null
@@ -164,18 +169,31 @@ class _FishPainter extends CustomPainter {
     // Aleta superior
     final dorsal = Path()
       ..moveTo(-fishLength * 0.05, -h * 0.2)
-      ..quadraticBezierTo(fishLength * 0.02, -h * 0.5, fishLength * 0.12, -h * 0.2)
+      ..quadraticBezierTo(
+        fishLength * 0.02,
+        -h * 0.5,
+        fishLength * 0.12,
+        -h * 0.2,
+      )
       ..close();
     canvas.drawPath(dorsal, Paint()..color = fin);
 
     // Cuerpo
     canvas.drawOval(
-      Rect.fromCenter(center: Offset.zero, width: fishLength * 0.7, height: h * 0.55),
+      Rect.fromCenter(
+        center: Offset.zero,
+        width: fishLength * 0.7,
+        height: h * 0.55,
+      ),
       bodyPaint,
     );
 
     // Ojo
-    canvas.drawCircle(Offset(fishLength * 0.16, -h * 0.05), h * 0.05, Paint()..color = eye);
+    canvas.drawCircle(
+      Offset(fishLength * 0.16, -h * 0.05),
+      h * 0.05,
+      Paint()..color = eye,
+    );
     canvas.restore();
   }
 

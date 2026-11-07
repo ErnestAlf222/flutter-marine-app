@@ -66,10 +66,12 @@ class MapConstants {
   static const String sampleTitle = 'Muestra de especies de esta zona';
   static const String centerLabel = 'Centro aproximado';
   // Lo que se calcula con las especies que ya llegaron (sin peticiones extra)
-  static String basedOnSample(int n) =>
-      n == 1 ? 'Según una muestra de 1 especie' : 'Según una muestra de $n especies';
-  static String basedOnFeatured(int n) =>
-      n == 1 ? 'Según la única especie destacada' : 'Según las $n especies destacadas';
+  static String basedOnSample(int n) => n == 1
+      ? 'Según una muestra de 1 especie'
+      : 'Según una muestra de $n especies';
+  static String basedOnFeatured(int n) => n == 1
+      ? 'Según la única especie destacada'
+      : 'Según las $n especies destacadas';
   static const String recordsTitle = 'Récords de la zona';
   static const String recordLargest = 'Más grande';
   static const String recordDeepest = 'Llega más profundo';

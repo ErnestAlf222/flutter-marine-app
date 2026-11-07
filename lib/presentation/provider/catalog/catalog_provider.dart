@@ -11,6 +11,8 @@ final catalogRepositoryProvider = Provider<CatalogRepository>((ref) {
 /// Estado del catálogo local: mientras no esté listo, la app usa el servidor
 class CatalogStatus {
   final bool ready;
+  // Ya se miró si hay un catálogo guardado completo (con o sin éxito)
+  final bool prepared;
   // Hay una sincronización en marcha; solo se muestra si todavía no hay catálogo
   final bool syncing;
   final int step;
@@ -18,6 +20,7 @@ class CatalogStatus {
 
   const CatalogStatus({
     this.ready = false,
+    this.prepared = false,
     this.syncing = false,
     this.step = 0,
     this.total = 0,
@@ -26,9 +29,16 @@ class CatalogStatus {
   /// La primera sincronización es la única que se muestra: la actualización va en silencio
   bool get showProgress => !ready && syncing;
 
-  CatalogStatus copyWith({bool? ready, bool? syncing, int? step, int? total}) =>
+  CatalogStatus copyWith({
+    bool? ready,
+    bool? prepared,
+    bool? syncing,
+    int? step,
+    int? total,
+  }) =>
       CatalogStatus(
         ready: ready ?? this.ready,
+        prepared: prepared ?? this.prepared,
         syncing: syncing ?? this.syncing,
         step: step ?? this.step,
         total: total ?? this.total,
@@ -49,7 +59,7 @@ class CatalogSyncNotifier extends Notifier<CatalogStatus> {
     try {
       final ready = await repository.prepare();
       if (!ref.mounted) return;
-      state = state.copyWith(ready: ready, syncing: true);
+      state = state.copyWith(ready: ready, prepared: true, syncing: true);
 
       await for (final progress in repository.sync()) {
         if (!ref.mounted) return;
@@ -60,11 +70,12 @@ class CatalogSyncNotifier extends Notifier<CatalogStatus> {
     } catch (_) {
       // Sin catálogo la app sigue funcionando con el servidor; se reintenta en la
       // próxima apertura (la sincronización continúa donde iba)
-      if (ref.mounted) state = state.copyWith(syncing: false);
+      if (ref.mounted) state = state.copyWith(prepared: true, syncing: false);
     }
   }
 }
 
-final catalogSyncProvider = NotifierProvider<CatalogSyncNotifier, CatalogStatus>(
-  CatalogSyncNotifier.new,
-);
+final catalogSyncProvider =
+    NotifierProvider<CatalogSyncNotifier, CatalogStatus>(
+      CatalogSyncNotifier.new,
+    );

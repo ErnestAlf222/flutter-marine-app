@@ -6,6 +6,7 @@ import 'package:marine_app/infrastructure/mappers/species_mapper.dart';
 import 'package:marine_app/infrastructure/models/species_detail_response.dart';
 import 'package:marine_app/infrastructure/models/species_response.dart';
 import 'package:marine_app/infrastructure/models/zones_response.dart';
+import 'package:marine_app/infrastructure/network/error_message.dart';
 import 'package:marine_app/infrastructure/network/rate_limit_interceptor.dart';
 import 'package:marine_app/infrastructure/network/request_limiter.dart';
 
@@ -58,7 +59,7 @@ class SpeciesDatasourcesImpl extends SpeciesDatasource {
       final data = SpeciesListResponse.fromJson(response.data);
       return (SpeciesMapper.pageToEntity(data), '');
     } catch (e) {
-      return (null, _errorMessage(e));
+      return (null, errorMessageFor(e));
     }
   }
 
@@ -76,7 +77,7 @@ class SpeciesDatasourcesImpl extends SpeciesDatasource {
       final data = SpeciesListResponse.fromJson(response.data);
       return (data.data.map(SpeciesMapper.speciesToEntity).toList(), '');
     } catch (e) {
-      return (null, _errorMessage(e));
+      return (null, errorMessageFor(e));
     }
   }
 
@@ -94,7 +95,7 @@ class SpeciesDatasourcesImpl extends SpeciesDatasource {
       final data = SpeciesDetailResponse.fromJson(response.data);
       return (SpeciesMapper.detailToEntity(data, lang), '');
     } catch (e) {
-      return (null, _errorMessage(e));
+      return (null, errorMessageFor(e));
     }
   }
 
@@ -114,7 +115,7 @@ class SpeciesDatasourcesImpl extends SpeciesDatasource {
         '',
       );
     } catch (e) {
-      return (null, _errorMessage(e));
+      return (null, errorMessageFor(e));
     }
   }
 
@@ -133,38 +134,7 @@ class SpeciesDatasourcesImpl extends SpeciesDatasource {
       final data = SpeciesListResponse.fromJson(response.data);
       return (data.data.map(SpeciesMapper.speciesToEntity).toList(), '');
     } catch (e) {
-      return (null, _errorMessage(e));
+      return (null, errorMessageFor(e));
     }
-  }
-
-  // Mensajes en español para mostrar tal cual en la pantalla
-  String _errorMessage(Object error) {
-    if (error is DioException) {
-      switch (error.type) {
-        case DioExceptionType.connectionTimeout:
-        case DioExceptionType.sendTimeout:
-        case DioExceptionType.receiveTimeout:
-          return 'La conexión tardó demasiado. Inténtalo de nuevo.';
-        case DioExceptionType.connectionError:
-          return 'Sin conexión a internet.';
-        case DioExceptionType.badResponse:
-          final status = error.response?.statusCode ?? 0;
-          if (status == 404) return ApiConstants.notFoundMessage;
-          if (status == 429) {
-            return 'Demasiadas peticiones. Espera un momento e inténtalo de nuevo.';
-          }
-          if (status >= 500) {
-            return 'El servidor tuvo un problema. Inténtalo más tarde.';
-          }
-          return 'La solicitud no se pudo completar (error $status).';
-        default:
-          return 'No se pudo completar la solicitud.';
-      }
-    }
-    // Un tipo inesperado al leer el JSON indica que la API cambió de formato
-    if (error is TypeError || error is FormatException) {
-      return 'La respuesta del servidor no tiene el formato esperado.';
-    }
-    return 'Ocurrió un error inesperado.';
   }
 }

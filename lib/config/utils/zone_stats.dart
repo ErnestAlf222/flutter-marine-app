@@ -11,7 +11,8 @@ class ZoneRecords {
 
   const ZoneRecords({this.largest, this.deepest, this.mostThreatened});
 
-  bool get isEmpty => largest == null && deepest == null && mostThreatened == null;
+  bool get isEmpty =>
+      largest == null && deepest == null && mostThreatened == null;
 }
 
 /// Estadísticas de una muestra de especies de una zona. Todo son funciones puras: sin red ni
@@ -27,18 +28,28 @@ class ZoneStats {
 
     for (final s in items) {
       final size = s.sizeMaxCm;
-      if (size != null && (largest == null || size > largest.sizeMaxCm!)) largest = s;
+      if (size != null && (largest == null || size > largest.sizeMaxCm!)) {
+        largest = s;
+      }
 
       final depth = s.depthMaxM;
-      if (depth != null && (deepest == null || depth > deepest.depthMaxM!)) deepest = s;
+      if (depth != null && (deepest == null || depth > deepest.depthMaxM!)) {
+        deepest = s;
+      }
 
-      final rank = ConservationConstants.scale.indexOf(s.conservationStatus ?? '');
+      final rank = ConservationConstants.scale.indexOf(
+        s.conservationStatus ?? '',
+      );
       if (rank > threatenedRank) {
         threatenedRank = rank;
         threatened = s;
       }
     }
-    return ZoneRecords(largest: largest, deepest: deepest, mostThreatened: threatened);
+    return ZoneRecords(
+      largest: largest,
+      deepest: deepest,
+      mostThreatened: threatened,
+    );
   }
 
   /// Cuántas especies hay de cada grupo, de más a menos; a igual conteo, en el orden en que
@@ -58,12 +69,19 @@ class ZoneStats {
     final entries = counts.entries.toList()
       ..sort((a, b) {
         final byCount = b.value.compareTo(a.value);
-        return byCount != 0 ? byCount : position(a.key).compareTo(position(b.key));
+        return byCount != 0
+            ? byCount
+            : position(a.key).compareTo(position(b.key));
       });
     return [for (final e in entries) (e.key, e.value)];
   }
 
   /// Las especies de un grupo; sin grupo, todas
   static List<Species> inGroup(List<Species> items, String? group) =>
-      group == null ? items : [for (final s in items) if (s.category == group) s];
+      group == null
+      ? items
+      : [
+          for (final s in items)
+            if (s.category == group) s,
+        ];
 }
